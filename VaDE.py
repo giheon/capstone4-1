@@ -37,7 +37,7 @@ def floatX(X):
 def sampling(args):
     z_mean, z_log_var = args
     epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0.)
-    return z_mean + K.exp(z_log_var / 2) * epsilon
+    return z_mean + K.exp(z_log_var / 2) * epsilon ## parameterization trick
 #=====================================
 def cluster_acc(Y_pred, Y):
   from sklearn.utils.linear_assignment_ import linear_assignment
@@ -87,15 +87,17 @@ def load_data(dataset):
 
     return X,Y
 
-def config_init(dataset):
-    if dataset == 'mnist':
+def config_init(dataset): ## 데이터셋별 하이퍼파라미터 return
+    if dataset == 'mnist': 
         return 784,3000,10,0.002,0.002,10,0.9,0.9,1,'sigmoid'
     if dataset == 'reuters10k':
         return 2000,15,4,0.002,0.002,5,0.5,0.5,1,'linear'
     if dataset == 'har':
         return 561,120,6,0.002,0.00002,10,0.9,0.9,5,'linear'
-        
-def gmmpara_init():
+        ## original_dim, epoch, n_centroid, lr_nn, lr_gmm, decay_n, decay_nn, decay_gmm, alpha, datatype
+        ## datatype이 sigmoid : Bernoulli likelihood(=BCE), linear : MSE
+
+def gmmpara_init(): ## GMM prior 파라미터(학습되는 파라미터) 초기화
     
     theta_init=np.ones(n_centroid)/n_centroid
     u_init=np.zeros((latent_dim,n_centroid))
@@ -107,7 +109,7 @@ def gmmpara_init():
     return theta_p,u_p,lambda_p
 
 #================================
-def get_gamma(tempz):
+def get_gamma(tempz): ## q(c|x) 역할의 responsibility γ 계산.
     temp_Z=T.transpose(K.repeat(tempz,n_centroid),[0,2,1])
     temp_u_tensor3=T.repeat(u_p.dimshuffle('x',0,1),batch_size,axis=0)
     temp_lambda_tensor3=T.repeat(lambda_p.dimshuffle('x',0,1),batch_size,axis=0)
@@ -117,7 +119,7 @@ def get_gamma(tempz):
                        K.square(temp_Z-temp_u_tensor3)/(2*temp_lambda_tensor3)),axis=1))+1e-10
     return temp_p_c_z/K.sum(temp_p_c_z,axis=-1,keepdims=True)
 #=====================================================
-def vae_loss(x, x_decoded_mean):
+def vae_loss(x, x_decoded_mean): ## VaDE 목적함수(실제로는 negative ELBO) 계산.
     Z=T.transpose(K.repeat(z,n_centroid),[0,2,1])
     z_mean_t=T.transpose(K.repeat(z_mean,n_centroid),[0,2,1])
     z_log_var_t=T.transpose(K.repeat(z_log_var,n_centroid),[0,2,1])
@@ -127,27 +129,29 @@ def vae_loss(x, x_decoded_mean):
     
     p_c_z=K.exp(K.sum((K.log(theta_tensor3)-0.5*K.log(2*math.pi*lambda_tensor3)-\
                        K.square(Z-u_tensor3)/(2*lambda_tensor3)),axis=1))+1e-10
-
     gamma=p_c_z/K.sum(p_c_z,axis=-1,keepdims=True)
     gamma_t=K.repeat(gamma,latent_dim)
     
     if datatype == 'sigmoid':
-        loss=alpha*original_dim * objectives.binary_crossentropy(x, x_decoded_mean)\
-        +K.sum(0.5*gamma_t*(latent_dim*K.log(math.pi*2)+K.log(lambda_tensor3)+K.exp(z_log_var_t)/lambda_tensor3+K.square(z_mean_t-u_tensor3)/lambda_tensor3),axis=(1,2))\
-        -0.5*K.sum(z_log_var+1,axis=-1)\
-        -K.sum(K.log(K.repeat_elements(theta_p.dimshuffle('x',0),batch_size,0))*gamma,axis=-1)\
-        +K.sum(K.log(gamma)*gamma,axis=-1)
+        loss = \
+                alpha*original_dim * objectives.binary_crossentropy(x, x_decoded_mean)\
+                +K.sum(0.5*gamma_t*(latent_dim*K.log(math.pi*2)+K.log(lambda_tensor3)+K.exp(z_log_var_t)/lambda_tensor3+K.square(z_mean_t-u_tensor3)/lambda_tensor3),axis=(1,2))\
+                -0.5*K.sum(z_log_var+1,axis=-1)\
+                -K.sum(K.log(K.repeat_elements(theta_p.dimshuffle('x',0),batch_size,0))*gamma,axis=-1)\
+                +K.sum(K.log(gamma)*gamma,axis=-1)
     else:
-        loss=alpha*original_dim * objectives.mean_squared_error(x, x_decoded_mean)\
-        +K.sum(0.5*gamma_t*(latent_dim*K.log(math.pi*2)+K.log(lambda_tensor3)+K.exp(z_log_var_t)/lambda_tensor3+K.square(z_mean_t-u_tensor3)/lambda_tensor3),axis=(1,2))\
-        -0.5*K.sum(z_log_var+1,axis=-1)\
-        -K.sum(K.log(K.repeat_elements(theta_p.dimshuffle('x',0),batch_size,0))*gamma,axis=-1)\
-        +K.sum(K.log(gamma)*gamma,axis=-1)
+        loss = \
+                alpha*original_dim * objectives.mean_squared_error(x, x_decoded_mean)\
+                +K.sum(0.5*gamma_t*(latent_dim*K.log(math.pi*2)+K.log(lambda_tensor3)+K.exp(z_log_var_t)/lambda_tensor3+K.square(z_mean_t-u_tensor3)/lambda_tensor3),axis=(1,2))\
+                -0.5*K.sum(z_log_var+1,axis=-1)\
+                -K.sum(K.log(K.repeat_elements(theta_p.dimshuffle('x',0),batch_size,0))*gamma,axis=-1)\
+                +K.sum(K.log(gamma)*gamma,axis=-1)
         
     return loss
 #================================
 
-def load_pretrain_weights(vade,dataset):
+def load_pretrain_weights(vade,dataset): ## 미리 저장된 AE 가중치를 불러와 VaDE 네트워크에 복사
+    
     ae = model_from_json(open('pretrain_weights/ae_'+dataset+'.json').read())
     ae.load_weights('pretrain_weights/ae_'+dataset+'_weights.h5')
     vade.layers[1].set_weights(ae.layers[0].get_weights())
@@ -158,7 +162,11 @@ def load_pretrain_weights(vade,dataset):
     vade.layers[-2].set_weights(ae.layers[-2].get_weights())
     vade.layers[-3].set_weights(ae.layers[-3].get_weights())
     vade.layers[-4].set_weights(ae.layers[-4].get_weights())
-    sample = sample_output.predict(X,batch_size=batch_size)
+    ## 사전학습한 AE의 encoder/decoder 가중치를 VaDE 모델의 대응 레이어에 복사
+
+    sample = sample_output.predict(X,batch_size=batch_size) 
+    ## latent 샘플(z_mean) 추출
+
     if dataset == 'mnist':
         g = mixture.GMM(n_components=n_centroid,covariance_type='diag')
         g.fit(sample)
@@ -174,9 +182,10 @@ def load_pretrain_weights(vade,dataset):
         u_p.set_value(floatX(g.means_.T))
         lambda_p.set_value((floatX(g.covars_.T)))
     print ('pretrain weights loaded!')
+
     return vade
 #===================================
-def lr_decay():
+def lr_decay(): ## 학습률 감소 스케줄
     if dataset == 'mnist':
         adam_nn.lr.set_value(floatX(max(adam_nn.lr.get_value()*decay_nn,0.0002)))
         adam_gmm.lr.set_value(floatX(max(adam_gmm.lr.get_value()*decay_gmm,0.0002)))
@@ -185,8 +194,9 @@ def lr_decay():
         adam_gmm.lr.set_value(floatX(adam_gmm.lr.get_value()*decay_gmm))
     print ('lr_nn:%f'%adam_nn.lr.get_value())
     print ('lr_gmm:%f'%adam_gmm.lr.get_value())
+    ## adam_nn(신경망 파트)와 adam_gmm(GMM 파트) 학습률을 epoch마다 감쇠
     
-def epochBegin(epoch):
+def epochBegin(epoch): ## epoch 시작 시 decay/클러스터링 성능 모니터링 (매 epoch 시작 시 평가/로그)
 
     if epoch % decay_n == 0 and epoch!=0:
         lr_decay()
@@ -203,6 +213,8 @@ def epochBegin(epoch):
     '''
     gamma = gamma_output.predict(X,batch_size=batch_size)
     acc=cluster_acc(np.argmax(gamma,axis=1),Y)
+    ## 현재 모델이 만들어낸 𝛾 = 𝑝(𝑐∣𝑧)로 클러스터를 예측하고, true label(Y)은 오직 평가용으로 ACC 출력
+
     global accuracy
     accuracy+=[acc[0]]
     if epoch>0 :
@@ -211,7 +223,7 @@ def epochBegin(epoch):
     if epoch==1 and dataset == 'har' and acc[0]<0.77:
         print ('=========== HAR dataset:bad init!Please run again! ============')
         sys.exit(0)
-        
+
 class EpochBegin(Callback):
     def on_epoch_begin(self, epoch, logs={}):
         epochBegin(epoch)
@@ -233,19 +245,27 @@ original_dim,epoch,n_centroid,lr_nn,lr_gmm,decay_n,decay_nn,decay_gmm,alpha,data
 theta_p,u_p,lambda_p = gmmpara_init()
 #===================
 
+## q(z∣x)의 파라미터를 출력하는 인코더
 x = Input(batch_shape=(batch_size, original_dim))
 h = Dense(intermediate_dim[0], activation='relu')(x)
 h = Dense(intermediate_dim[1], activation='relu')(h)
 h = Dense(intermediate_dim[2], activation='relu')(h)
 z_mean = Dense(latent_dim)(h)
 z_log_var = Dense(latent_dim)(h)
+
+## z 샘플링
 z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
+
+## p(x∣z)의 파라미터를 출력하는 디코더 (MNIST면 Bernoulli의 mean)
 h_decoded = Dense(intermediate_dim[-1], activation='relu')(z)
 h_decoded = Dense(intermediate_dim[-2], activation='relu')(h_decoded)
 h_decoded = Dense(intermediate_dim[-3], activation='relu')(h_decoded)
 x_decoded_mean = Dense(original_dim, activation=datatype)(h_decoded)
 
 #========================
+## 감마(클러스터 posterior)
+## γ=p(c∣z) 계산
+## 이게 논문에서 사실상 𝑞(𝑐∣𝑥) 역할
 Gamma = Lambda(get_gamma, output_shape=(n_centroid,))(z)
 sample_output = Model(x, z_mean)
 gamma_output = Model(x,Gamma)
