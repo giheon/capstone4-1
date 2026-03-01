@@ -62,8 +62,8 @@ def main() -> None:
     print(f"training on: {args.dataset}")
     print(f"device: {device}")
 
-    base_cfg = get_default_config(args.dataset)
-    cfg = override_config(
+    base_cfg = get_default_config(args.dataset) # dataset별 기본 하이퍼파라미터 로드
+    cfg = override_config( # 사용자가 준 옵션(epochs, batch_size 등)만 base_cfg에 덮어쓴 cfg 생성
         base_cfg,
         {
             "batch_size": args.batch_size,
@@ -87,7 +87,7 @@ def main() -> None:
     if x.shape[1] != cfg.input_dim:
         raise ValueError(f"input dim mismatch: config={cfg.input_dim}, data={x.shape[1]}")
 
-    model = build_model_from_config(cfg).to(device)
+    model = build_model_from_config(cfg).to(device) # VaDE(nn.Module) 인스턴스 생성 & GPU/CPU에 올림
 
     history = train_vade(
         model=model,
@@ -107,7 +107,7 @@ def main() -> None:
         use_mean=args.eval_use_mean,
     )
     pred = np.argmax(gamma, axis=1)
-    final_acc = history["acc"][-1] if history["acc"] else 0.0
+    final_acc = history["acc"][-1] if history["acc"] else 0.0 # 최종 정확도
     print(f"final acc_p_c_z: {final_acc:.6f} | pred shape={pred.shape}")
 
     save_path = args.save_path or str(Path("checkpoints") / f"vade_{args.dataset}.pt")

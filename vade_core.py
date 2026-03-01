@@ -5,7 +5,7 @@ import pickle
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import scipy.io as scio
@@ -68,13 +68,17 @@ def cluster_acc(y_pred: np.ndarray, y_true: np.ndarray) -> Tuple[float, np.ndarr
         raise ValueError("y_pred and y_true size mismatch")
     y_pred = y_pred.astype(np.int64)
     y_true = y_true.astype(np.int64)
+
     dim = int(max(y_pred.max(), y_true.max()) + 1)
-    weight = np.zeros((dim, dim), dtype=np.int64)
+    weight = np.zeros((dim, dim), dtype=np.int64) # weight[a, b] : 클러스터 a로 예측된 샘플 중 정답이 b인 개수
+
     for i in range(y_pred.size):
-        weight[y_pred[i], y_true[i]] += 1
-    row_ind, col_ind = linear_sum_assignment(weight.max() - weight)
-    acc = float(weight[row_ind, col_ind].sum()) / float(y_pred.size)
-    assignment = np.stack([row_ind, col_ind], axis=1)
+        weight[y_pred[i], y_true[i]] += 1 
+
+    row_ind, col_ind = linear_sum_assignment(weight.max() - weight) # 클러스터와 정답라벨 매칭
+
+    acc = float(weight[row_ind, col_ind].sum()) / float(y_pred.size) # 정확도 계산
+    assignment = np.stack([row_ind, col_ind], axis=1) # 매칭쌍 만들기
     return acc, assignment, weight
 
 # ============================================================================
@@ -283,6 +287,7 @@ class VaDE(nn.Module):
         lambda_c = torch.exp(self.log_var_c) # lambda_c shape: (K, J)
         return theta, self.mu_c, lambda_c # mu_c shape: (K, J)
 
+    # latent variable z로 gamma 계산
     def compute_gamma(self, z: torch.Tensor) -> torch.Tensor:
         theta, mu_c, lambda_c = self.mixture_parameters()
         z_expand = z.unsqueeze(1) # z: (B, J) -> z_expand: (B, 1, J)
@@ -305,7 +310,7 @@ class VaDE(nn.Module):
         z_mean: torch.Tensor,
         z_log_var: torch.Tensor,
         alpha: float,
-    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         theta, mu_c, lambda_c = self.mixture_parameters()
         gamma = self.compute_gamma(z)
 
@@ -338,13 +343,24 @@ class VaDE(nn.Module):
         total = recon + kld_like + z_entropy + cat_prior + cat_entropy
         loss = total.mean()
 
+        gamma_entropy = -(gamma * torch.log(gamma + EPS)).sum(dim=1).mean()
+        theta_entropy = -(theta * torch.log(theta + EPS)).sum()
+        cluster_usage = torch.bincount(torch.argmax(gamma, dim=1), minlength=self.n_centroid)
+        cluster_usage_ratio = cluster_usage.float() / cluster_usage.sum().clamp_min(1).float()
+        cluster_usage_entropy = -(cluster_usage_ratio * torch.log(cluster_usage_ratio + EPS)).sum()
+        cluster_top1_ratio = cluster_usage_ratio.max()
+
         logs = {
-            "loss": float(loss.detach().cpu().item()),
-            "recon": float(recon.mean().detach().cpu().item()),
-            "kld_like": float(kld_like.mean().detach().cpu().item()),
-            "z_entropy": float(z_entropy.mean().detach().cpu().item()),
-            "cat_prior": float(cat_prior.mean().detach().cpu().item()),
-            "cat_entropy": float(cat_entropy.mean().detach().cpu().item()),
+            "loss": loss.detach(),
+            "recon": recon.mean().detach(),
+            "kld_like": kld_like.mean().detach(),
+            "z_entropy": z_entropy.mean().detach(),
+            "cat_prior": cat_prior.mean().detach(),
+            "cat_entropy": cat_entropy.mean().detach(),
+            "gamma_entropy": gamma_entropy.detach(),
+            "theta_entropy": theta_entropy.detach(),
+            "cluster_usage_entropy": cluster_usage_entropy.detach(),
+            "cluster_top1_ratio": cluster_top1_ratio.detach(),
         }
         return loss, logs
 
@@ -425,7 +441,7 @@ def encode_dataset(model: VaDE, features: np.ndarray, batch_size: int, device: t
             out.append(z_mean.cpu().numpy())
     return np.concatenate(out, axis=0)
 
-
+# 본학습 전, GMM init
 def initialize_gmm_parameters(model: VaDE, embeddings: np.ndarray, dataset: str) -> None:
     with torch.no_grad():
         model.pi_logits.fill_(0.0)
@@ -457,7 +473,7 @@ def predict_gamma(
     device: torch.device,
     use_mean: bool = True,
 ) -> np.ndarray:
-    model.eval()
+    model.eval() # evaluation mode
     data = torch.from_numpy(features.astype(np.float32))
     loader = torch.utils.data.DataLoader(data, batch_size=batch_size, shuffle=False, drop_last=False)
 
@@ -466,10 +482,10 @@ def predict_gamma(
         for batch_x in loader:
             batch_x = batch_x.to(device)
             z_mean, z_log_var = model.encode(batch_x)
-            z = z_mean if use_mean else model.reparameterize(z_mean, z_log_var)
-            gamma = model.compute_gamma(z)
-            out.append(gamma.cpu().numpy())
-    return np.concatenate(out, axis=0)
+            z = z_mean if use_mean else model.reparameterize(z_mean, z_log_var) # z sampling
+            gamma = model.compute_gamma(z) # z: (B, J) -> gamma: (B, K)
+            out.append(gamma.cpu().numpy()) # out list는 배치 단위로 gamma를 쪼개서 저장
+    return np.concatenate(out, axis=0) # 최종 shape : (N, K)
 
 
 def lr_decay_step(optimizer: torch.optim.Optimizer, dataset: str, decay_nn: float, decay_gmm: float) -> Tuple[float, float]:
@@ -487,22 +503,55 @@ def lr_decay_step(optimizer: torch.optim.Optimizer, dataset: str, decay_nn: floa
     optimizer.param_groups[1]["lr"] = gmm_lr
     return nn_lr, gmm_lr
 
+
+def should_record_training_step(global_step: int) -> bool:
+    return global_step % 50 == 0
+
+
+def append_step_history(
+    history: Dict[str, List[Any]],
+    global_step: int,
+    epoch_index: int,
+    step_in_epoch: int,
+    logs: Dict[str, Any],
+) -> None:
+    step_metrics = torch.stack(
+        [
+            logs["gamma_entropy"],
+            logs["theta_entropy"],
+            logs["cluster_usage_entropy"],
+            logs["cluster_top1_ratio"],
+            logs["recon"],
+            logs["kld_like"],
+        ]
+    ).detach().cpu().tolist()
+
+    history["step"].append(global_step)
+    history["epoch"].append(epoch_index + 1)
+    history["step_in_epoch"].append(step_in_epoch)
+    history["batch_gamma_entropy"].append(float(step_metrics[0]))
+    history["batch_theta_entropy"].append(float(step_metrics[1]))
+    history["batch_cluster_usage_entropy"].append(float(step_metrics[2]))
+    history["batch_cluster_top1_ratio"].append(float(step_metrics[3]))
+    history["batch_recon"].append(float(step_metrics[4]))
+    history["batch_kld_like"].append(float(step_metrics[5]))
+
 # ============================================================================
 # Checkpoint
 # ============================================================================
 
-def save_checkpoint(path: str, model: VaDE, config: TrainConfig, history: Dict[str, List[float]]) -> None:
+def save_checkpoint(path: str, model: VaDE, config: TrainConfig, history: Dict[str, List[Any]]) -> None:
     payload = {
-        "model_state": model.state_dict(),
+        "model_state": model.state_dict(), # 학습 완료된 모든 파라미터 값 저장
         "model_kwargs": {
             "input_dim": model.input_dim,
             "latent_dim": model.latent_dim,
             "n_centroid": model.n_centroid,
             "hidden_dims": list(model.hidden_dims),
             "reconstruction": model.reconstruction,
-        },
-        "train_config": asdict(config),
-        "history": history,
+        }, # 모델을 다시 만들기 위한 설정
+        "train_config": asdict(config), # 학습에 사용한 config 전체
+        "history": history, # 학습과정 로그
     }
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -556,7 +605,7 @@ def reverse_assignment(assignment: np.ndarray) -> Dict[int, int]:
 def build_model_from_config(config: TrainConfig) -> VaDE:
     return VaDE(config.input_dim, config.latent_dim, config.n_centroid, config.hidden_dims, config.reconstruction)
 
-
+# 기본 config + 사용자 옵션 적용
 def override_config(config: TrainConfig, args: Dict[str, Optional[float]]) -> TrainConfig:
     out = copy.deepcopy(config)
     for key, value in args.items():
@@ -573,15 +622,38 @@ def train_vade(
     device: torch.device,
     pretrain: bool = True,
     eval_use_mean: bool = False,
-) -> Dict[str, List[float]]:
-    history: Dict[str, List[float]] = {"loss": [], "acc": [], "lr_nn": [], "lr_gmm": []}
+) -> Dict[str, List[Any]]:
+    history: Dict[str, List[Any]] = {
+        "step": [],
+        "epoch": [],
+        "step_in_epoch": [],
+
+        "batch_gamma_entropy": [],
+        "batch_theta_entropy": [],
+        "batch_cluster_usage_entropy": [],
+        "batch_cluster_top1_ratio": [],
+        "batch_recon": [],
+        "batch_kld_like": [],
+
+        "loss": [],
+        "recon": [],
+        "kld_like": [],
+        "z_entropy": [],
+        "cat_prior": [],
+        "cat_entropy": [],
+        "acc": [],
+        "lr_nn": [],
+        "lr_gmm": [],
+    }
 
     if pretrain:
         ae = pretrain_autoencoder(features, config, device=device)
         copy_pretrain_weights(model, ae)
+    else :
+        raise RuntimeError("no-pretrain encoder, stop it") # encoder가 pretrain되지 않았으면 encoder부터 학습시키고 VaDE 학습 시작 필요
 
-    embeddings = encode_dataset(model, features, config.batch_size, device)
-    initialize_gmm_parameters(model, embeddings, config.dataset)
+    embeddings = encode_dataset(model, features, config.batch_size, device) # model.encode(x)로부터 z_mean만 뽑아서 모으기 / shape: (N, J)
+    initialize_gmm_parameters(model, embeddings, config.dataset) 
 
     optimizer = torch.optim.Adam(
         [
@@ -594,32 +666,67 @@ def train_vade(
     data = torch.from_numpy(features.astype(np.float32))
     loader = torch.utils.data.DataLoader(data, batch_size=config.batch_size, shuffle=True, drop_last=False)
 
+    global_step = 0 # 총 학습 step 계산 변수
+
     for epoch in range(config.epochs):
         if epoch % config.decay_n == 0 and epoch != 0:
             lr_nn, lr_gmm = lr_decay_step(optimizer, config.dataset, config.decay_nn, config.decay_gmm)
             print(f"lr_nn: {lr_nn:.8f} | lr_gmm: {lr_gmm:.8f}")
 
         model.train()
-        run_loss = 0.0
+
+        run_loss = torch.zeros((), device=device)
+        run_recon = torch.zeros((), device=device)
+        run_kld_like = torch.zeros((), device=device)
+        run_z_entropy = torch.zeros((), device=device)
+        run_cat_prior = torch.zeros((), device=device)
+        run_cat_entropy = torch.zeros((), device=device)
         n = 0
-        for batch_x in loader: # batch_x : shape (B, D) tensor, dtype float32
+
+        for step_in_epoch, batch_x in enumerate(loader, start=1): # batch_x : shape (B, D) tensor, dtype float32
             batch_x = batch_x.to(device)
             optimizer.zero_grad()
-            x_hat, z_mean, z_log_var, z = model(batch_x)
-            loss, _ = model.vade_loss(batch_x, x_hat, z, z_mean, z_log_var, config.alpha)
+            x_hat, z_mean, z_log_var, z = model(batch_x) # forward 호출
+            loss, loss_logs = model.vade_loss(batch_x, x_hat, z, z_mean, z_log_var, config.alpha)
             loss.backward()
             optimizer.step()
+            global_step += 1
 
-            run_loss += loss.detach().cpu().item() * batch_x.shape[0]
-            n += batch_x.shape[0]
+            if should_record_training_step(global_step):
+                append_step_history(history, global_step, epoch, step_in_epoch, loss_logs)
 
-        epoch_loss = run_loss / max(n, 1)
+            batch_size_now = batch_x.shape[0]
+            run_loss += loss.detach() * batch_size_now
+            run_recon += loss_logs["recon"] * batch_size_now
+            run_kld_like += loss_logs["kld_like"] * batch_size_now
+            run_z_entropy += loss_logs["z_entropy"] * batch_size_now
+            run_cat_prior += loss_logs["cat_prior"] * batch_size_now
+            run_cat_entropy += loss_logs["cat_entropy"] * batch_size_now
+            n += batch_size_now
 
+        # 에폭당 로그에 기록할 변수들 gpu->cpu
+        epoch_metrics = (
+            torch.stack([run_loss, run_recon, run_kld_like, run_z_entropy, run_cat_prior, run_cat_entropy])
+            / max(n, 1)
+        ).detach().cpu().tolist() 
+        epoch_loss = float(epoch_metrics[0])
+        epoch_recon = float(epoch_metrics[1])
+        epoch_kld_like = float(epoch_metrics[2])
+        epoch_z_entropy = float(epoch_metrics[3])
+        epoch_cat_prior = float(epoch_metrics[4])
+        epoch_cat_entropy = float(epoch_metrics[5])
+
+        # 매 에폭마다 정확도 계산을 위한 코드
         gamma = predict_gamma(model, features, config.batch_size, device, eval_use_mean)
-        y_pred = np.argmax(gamma, axis=1)
+        y_pred = np.argmax(gamma, axis=1) # y_pred : (N,)
         acc, _, _ = cluster_acc(y_pred, labels)
 
         history["loss"].append(float(epoch_loss))
+        history["recon"].append(float(epoch_recon))
+        history["kld_like"].append(float(epoch_kld_like))
+        history["z_entropy"].append(float(epoch_z_entropy))
+        history["cat_prior"].append(float(epoch_cat_prior))
+        history["cat_entropy"].append(float(epoch_cat_entropy))
         history["acc"].append(float(acc))
         history["lr_nn"].append(float(optimizer.param_groups[0]["lr"]))
         history["lr_gmm"].append(float(optimizer.param_groups[1]["lr"]))
