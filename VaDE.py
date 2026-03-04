@@ -39,7 +39,12 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument("--pretrain-epochs", type=int, default=None)
     parser.add_argument("--pretrain-lr", type=float, default=None)
-    parser.add_argument("--no-pretrain", action="store_true")
+    parser.add_argument(
+        "--pretrain",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="True: load author pretrain weights from pretrain_weights/*.pt. False: train AE pretrain from scratch.",
+    )
 
     parser.add_argument(
         "--eval-use-mean",
@@ -95,7 +100,7 @@ def main() -> None:
         labels=y,
         config=cfg,
         device=device,
-        pretrain=not args.no_pretrain,
+        load_pretrained_ae=args.pretrain,
         eval_use_mean=args.eval_use_mean,
     )
 

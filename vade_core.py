@@ -182,6 +182,52 @@ def load_data(dataset: str, data_root: str = "dataset") -> Tuple[np.ndarray, np.
         return load_reuters_all(root)
     raise ValueError(f"Unsupported dataset: {dataset}")
 
+#---------------------------------------------------------------------------------------------------------#
+
+def get_author_pretrain_weight_path(dataset: str) -> Path:
+    mapped_dataset = "reuters10k" if dataset == "reuters_all" else dataset
+    return Path("pretrain_weights") / f"ae_{mapped_dataset}.pt"
+
+
+def load_author_pretrained_autoencoder(config: TrainConfig, device: torch.device) -> StackedAutoEncoder:
+    weight_path = get_author_pretrain_weight_path(config.dataset)
+    if not weight_path.exists():
+        raise FileNotFoundError(f"author pretrain weights not found: {weight_path}")
+
+    ae = StackedAutoEncoder(config.input_dim, config.latent_dim, config.hidden_dims, config.reconstruction).to(device)
+
+    payload = torch.load(weight_path, map_location=device)
+    if hasattr(payload, "state_dict"):
+        state = payload.state_dict()
+    elif isinstance(payload, dict) and "state_dict" in payload and isinstance(payload["state_dict"], dict):
+        state = payload["state_dict"]
+    elif isinstance(payload, dict) and "model_state" in payload and isinstance(payload["model_state"], dict):
+        state = payload["model_state"]
+    elif isinstance(payload, dict):
+        state = payload
+    else:
+        raise TypeError(f"Unsupported pretrain payload type: {type(payload)} at {weight_path}")
+
+    if any(k.startswith("module.") for k in state.keys()):
+        state = {k.replace("module.", "", 1): v for k, v in state.items()}
+
+    expected_keys = set(ae.state_dict().keys())
+    state_keys = set(state.keys())
+    if expected_keys != state_keys:
+        if expected_keys.issubset(state_keys):
+            state = {k: state[k] for k in ae.state_dict().keys()}
+        else:
+            missing = sorted(expected_keys - state_keys)
+            extra = sorted(state_keys - expected_keys)
+            raise KeyError(
+                f"pretrain state dict mismatch for {weight_path}. "
+                f"missing={missing[:5]} extra={extra[:5]}"
+            )
+
+    ae.load_state_dict(state, strict=True)
+
+    return ae
+
 # ============================================================================
 # Model
 # ============================================================================
@@ -620,7 +666,7 @@ def train_vade(
     labels: np.ndarray,
     config: TrainConfig,
     device: torch.device,
-    pretrain: bool = True,
+    load_pretrained_ae: bool = True,
     eval_use_mean: bool = False,
 ) -> Dict[str, List[Any]]:
     history: Dict[str, List[Any]] = {
@@ -646,11 +692,13 @@ def train_vade(
         "lr_gmm": [],
     }
 
-    if pretrain:
+    if load_pretrained_ae:
+        ae = load_author_pretrained_autoencoder(config, device=device)
+        print(f"author pretrain weights loaded: {get_author_pretrain_weight_path(config.dataset)}")
+        copy_pretrain_weights(model, ae)
+    else:
         ae = pretrain_autoencoder(features, config, device=device)
         copy_pretrain_weights(model, ae)
-    else :
-        raise RuntimeError("no-pretrain encoder, stop it") # encoder가 pretrain되지 않았으면 encoder부터 학습시키고 VaDE 학습 시작 필요
 
     embeddings = encode_dataset(model, features, config.batch_size, device) # model.encode(x)로부터 z_mean만 뽑아서 모으기 / shape: (N, J)
     initialize_gmm_parameters(model, embeddings, config.dataset) 
@@ -692,6 +740,7 @@ def train_vade(
             optimizer.step()
             global_step += 1
 
+            # per 50 steps 
             if should_record_training_step(global_step):
                 append_step_history(history, global_step, epoch, step_in_epoch, loss_logs)
 
@@ -704,7 +753,7 @@ def train_vade(
             run_cat_entropy += loss_logs["cat_entropy"] * batch_size_now
             n += batch_size_now
 
-        # 에폭당 로그에 기록할 변수들 gpu->cpu
+        # logs per epoch : gpu->cpu
         epoch_metrics = (
             torch.stack([run_loss, run_recon, run_kld_like, run_z_entropy, run_cat_prior, run_cat_entropy])
             / max(n, 1)

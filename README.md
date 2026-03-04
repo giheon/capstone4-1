@@ -38,6 +38,11 @@ Optional examples:
 ```bash
 python VaDE.py mnist --epochs 200 --lr-nn 0.001 --lr-gmm 0.0005
 python VaDE.py reuters_all --data-root dataset --save-path checkpoints/vade_reuters_all.pt
+# Default (pretrain=true): load author AE weights from pretrain_weights/*.pt
+python VaDE.py mnist --pretrain
+# pretrain=false: train AE pretrain from scratch (default pretrain-epochs=50)
+python VaDE.py mnist --no-pretrain
+python VaDE.py mnist --no-pretrain --pretrain-epochs 120
 ```
 
 ## Test (MNIST)
