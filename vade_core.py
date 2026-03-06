@@ -497,7 +497,7 @@ def initialize_gmm_parameters(model: VaDE, embeddings: np.ndarray, dataset: str)
     if dataset in {"mnist", "har", "reuters_all"}:
         random_state = 3 if dataset == "har" else 0
 
-        gmm = GaussianMixture(n_components=model.n_centroid, covariance_type="diag", random_state=random_state)
+        gmm = GaussianMixture(n_components=model.n_centroid, covariance_type="diag", random_state=random_state, n_init=10)
         gmm.fit(embeddings) # 내부에서 EM 알고리즘 반복 -> 로그우도가 더 이상 크게 안 늘 때까지 수렴
         with torch.no_grad():
             model.mu_c.copy_(torch.from_numpy(gmm.means_.astype(np.float32)))
