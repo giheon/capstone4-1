@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import gzip
 import math
@@ -247,6 +249,11 @@ class StackedAutoEncoder(nn.Module):
         self.dec3 = nn.Linear(h2, h1)
         self.dec4 = nn.Linear(h1, input_dim)
 
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                torch.nn.init.zeros_(m.bias)
+
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         h = F.relu(self.enc1(x))
         h = F.relu(self.enc2(h))
@@ -346,8 +353,17 @@ class VaDE(nn.Module):
         gaussian_log_prob = gaussian_log_prob - ((z_expand - mu_expand) ** 2) / (2.0 * lambda_expand + EPS) # (B, K, J)
         gaussian_log_prob = gaussian_log_prob.sum(dim=2) # (B, K)
         log_prob = log_theta + gaussian_log_prob 
-        return torch.softmax(log_prob, dim=1) # gamma shape: (B, K)
-
+        
+        # return torch.softmax(log_prob, dim=1) # gamma shape: (B, K)
+        p_c_z = torch.exp(log_prob) + EPS
+        gamma = p_c_z / p_c_z.sum(dim=1, keepdim=True)
+        
+        return gamma
+        '''
+        log_gamma = log_prob - torch.logsumexp(log_prob, dim=1, keepdim=True)
+        gamma = torch.exp(log_gamma)
+        return gamma
+        '''
     def vade_loss(
         self,
         x: torch.Tensor,
@@ -361,9 +377,10 @@ class VaDE(nn.Module):
         gamma = self.compute_gamma(z)
 
         if self.reconstruction == "sigmoid":
-            recon = F.binary_cross_entropy(x_hat, x, reduction="none").sum(dim=1)
+            recon = F.binary_cross_entropy(x_hat, x, reduction="none").sum(dim=1) 
         else:
-            recon = F.mse_loss(x_hat, x, reduction="none").sum(dim=1)
+            recon = F.mse_loss(x_hat, x, reduction="none").sum(dim=1) 
+
         recon = alpha * recon
 
         batch = x.shape[0]
@@ -373,7 +390,74 @@ class VaDE(nn.Module):
         lambda_t = lambda_c.t().unsqueeze(0).expand(batch, self.latent_dim, self.n_centroid)
         gamma_t = gamma.unsqueeze(1).expand(batch, self.latent_dim, self.n_centroid)
 
-        term_const = self.latent_dim * math.log(math.pi * 2.0)
+        term_const = math.log(math.pi * 2.0)
+        kld_like = 0.5 * gamma_t * (
+            term_const
+            + torch.log(lambda_t + EPS)
+            + torch.exp(z_log_var_t) / (lambda_t + EPS)
+            + (z_mean_t - mu_t) ** 2 / (lambda_t + EPS)
+        )
+        kld_like = kld_like.sum(dim=(1, 2))
+
+        z_entropy = -0.5 * torch.sum(z_log_var + 1.0, dim=1)
+        cat_prior = -torch.sum(torch.log(theta + EPS).view(1, self.n_centroid) * gamma, dim=1)
+        cat_entropy = torch.sum(torch.log(gamma + EPS) * gamma, dim=1)
+
+        total = recon + kld_like + z_entropy + cat_prior + cat_entropy
+        
+        # 🚨 수정됨: klovbe 방식 적용 (sum 후 batch로 명시적 나누기)
+        loss = total.sum() / batch
+
+        gamma_entropy = -(gamma * torch.log(gamma + EPS)).sum(dim=1).mean()
+        theta_entropy = -(theta * torch.log(theta + EPS)).sum()
+        cluster_usage = torch.bincount(torch.argmax(gamma, dim=1), minlength=self.n_centroid)
+        cluster_usage_ratio = cluster_usage.float() / cluster_usage.sum().clamp_min(1).float()
+        cluster_usage_entropy = -(cluster_usage_ratio * torch.log(cluster_usage_ratio + EPS)).sum()
+        cluster_top1_ratio = cluster_usage_ratio.max()
+
+        logs = {
+            "loss": loss.detach(),
+            # 🚨 수정됨: 로그값들도 모두 sum() / batch 로 통일
+            "recon": (recon.sum() / batch).detach(),
+            "kld_like": (kld_like.sum() / batch).detach(),
+            "z_entropy": (z_entropy.sum() / batch).detach(),
+            "cat_prior": (cat_prior.sum() / batch).detach(),
+            "cat_entropy": (cat_entropy.sum() / batch).detach(),
+            "gamma_entropy": gamma_entropy.detach(),
+            "theta_entropy": theta_entropy.detach(),
+            "cluster_usage_entropy": cluster_usage_entropy.detach(),
+            "cluster_top1_ratio": cluster_top1_ratio.detach(),
+        }
+        return loss, logs
+    '''
+    def vade_loss(
+        self,
+        x: torch.Tensor,
+        x_hat: torch.Tensor,
+        z: torch.Tensor,
+        z_mean: torch.Tensor,
+        z_log_var: torch.Tensor,
+        alpha: float,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        theta, mu_c, lambda_c = self.mixture_parameters()
+        gamma = self.compute_gamma(z)
+
+        if self.reconstruction == "sigmoid":
+            recon = F.binary_cross_entropy(x_hat, x, reduction="none").sum(dim=1) 
+        else:
+            recon = F.mse_loss(x_hat, x, reduction="none").sum(dim=1) 
+
+        recon = alpha * recon
+
+        batch = x.shape[0]
+        z_mean_t = z_mean.unsqueeze(2).expand(batch, self.latent_dim, self.n_centroid)
+        z_log_var_t = z_log_var.unsqueeze(2).expand(batch, self.latent_dim, self.n_centroid)
+        mu_t = mu_c.t().unsqueeze(0).expand(batch, self.latent_dim, self.n_centroid)
+        lambda_t = lambda_c.t().unsqueeze(0).expand(batch, self.latent_dim, self.n_centroid)
+        gamma_t = gamma.unsqueeze(1).expand(batch, self.latent_dim, self.n_centroid)
+
+        # term_const = self.latent_dim * math.log(math.pi * 2.0)
+        term_const = math.log(math.pi * 2.0)
         kld_like = 0.5 * gamma_t * (
             term_const
             + torch.log(lambda_t + EPS)
@@ -388,6 +472,7 @@ class VaDE(nn.Module):
 
         total = recon + kld_like + z_entropy + cat_prior + cat_entropy
         loss = total.mean()
+
 
         gamma_entropy = -(gamma * torch.log(gamma + EPS)).sum(dim=1).mean()
         theta_entropy = -(theta * torch.log(theta + EPS)).sum()
@@ -409,7 +494,7 @@ class VaDE(nn.Module):
             "cluster_top1_ratio": cluster_top1_ratio.detach(),
         }
         return loss, logs
-
+    '''
     # 신경망 모델 파라미터
     def nn_parameters(self) -> List[nn.Parameter]:
         params: List[nn.Parameter] = []
@@ -426,7 +511,7 @@ class VaDE(nn.Module):
 
 def pretrain_autoencoder(features: np.ndarray, config: TrainConfig, device: torch.device, verbose: bool = True) -> StackedAutoEncoder:
     ae = StackedAutoEncoder(config.input_dim, config.latent_dim, config.hidden_dims, config.reconstruction).to(device)
-    optimizer = torch.optim.Adam(ae.parameters(), lr=config.pretrain_lr, eps=1e-4)
+    optimizer = torch.optim.Adam(ae.parameters(), lr=config.pretrain_lr, eps=1e-7) # 1e-4 -> 1e-7
 
     data = torch.from_numpy(features.astype(np.float32))
     loader = torch.utils.data.DataLoader(data, batch_size=config.batch_size, shuffle=True, drop_last=False)
@@ -458,19 +543,25 @@ def copy_pretrain_weights(vade: VaDE, ae: StackedAutoEncoder) -> None:
     with torch.no_grad():
         vade.enc1.weight.copy_(ae.enc1.weight)
         vade.enc1.bias.copy_(ae.enc1.bias)
+
         vade.enc2.weight.copy_(ae.enc2.weight)
         vade.enc2.bias.copy_(ae.enc2.bias)
+
         vade.enc3.weight.copy_(ae.enc3.weight)
         vade.enc3.bias.copy_(ae.enc3.bias)
+
         vade.z_mean.weight.copy_(ae.enc4.weight)
         vade.z_mean.bias.copy_(ae.enc4.bias)
 
         vade.dec1.weight.copy_(ae.dec1.weight)
         vade.dec1.bias.copy_(ae.dec1.bias)
+
         vade.dec2.weight.copy_(ae.dec2.weight)
         vade.dec2.bias.copy_(ae.dec2.bias)
+
         vade.dec3.weight.copy_(ae.dec3.weight)
         vade.dec3.bias.copy_(ae.dec3.bias)
+
         vade.x_bar.weight.copy_(ae.dec4.weight)
         vade.x_bar.bias.copy_(ae.dec4.bias)
 
@@ -497,12 +588,13 @@ def initialize_gmm_parameters(model: VaDE, embeddings: np.ndarray, dataset: str)
     if dataset in {"mnist", "har", "reuters_all"}:
         random_state = 3 if dataset == "har" else 0
 
-        gmm = GaussianMixture(n_components=model.n_centroid, covariance_type="diag", random_state=random_state, n_init=10)
+        gmm = GaussianMixture(n_components=model.n_centroid, covariance_type="diag", random_state=random_state, n_init=10, reg_covar=1e-3)
         gmm.fit(embeddings) # 내부에서 EM 알고리즘 반복 -> 로그우도가 더 이상 크게 안 늘 때까지 수렴
         with torch.no_grad():
             model.mu_c.copy_(torch.from_numpy(gmm.means_.astype(np.float32)))
             model.log_var_c.copy_(torch.log(torch.from_numpy(gmm.covariances_.astype(np.float32)) + EPS))
-            model.pi_logits.copy_(torch.log(torch.from_numpy(gmm.weights_.astype(np.float32)) + EPS))
+            model.pi_logits.fill_(0.0)
+            # model.pi_logits.copy_(torch.log(torch.from_numpy(gmm.weights_.astype(np.float32)) + EPS))
     elif dataset == "reuters10k":
         kmeans = KMeans(n_clusters=model.n_centroid, random_state=0, n_init=20)
         kmeans.fit(embeddings)
@@ -548,8 +640,27 @@ def lr_decay_step(optimizer: torch.optim.Optimizer, dataset: str, decay_nn: floa
     optimizer.param_groups[0]["lr"] = nn_lr
     optimizer.param_groups[1]["lr"] = gmm_lr
     return nn_lr, gmm_lr
+'''
+def lr_decay_step(optimizer: torch.optim.Optimizer, dataset: str, decay_nn: float, decay_gmm: float) -> Tuple[float, float]:
+    nn_lr = optimizer.param_groups[0]["lr"]
+    gmm_lr = optimizer.param_groups[1]["lr"]
 
+    if dataset == "mnist":
+        nn_lr = max(nn_lr * decay_nn, 0.0002)
+        gmm_lr = max(gmm_lr * decay_gmm, 0.0002)
+    else:
+        nn_lr = nn_lr * decay_nn
+        gmm_lr = gmm_lr * decay_gmm
 
+    optimizer.param_groups[0]["lr"] = nn_lr
+    optimizer.param_groups[1]["lr"] = gmm_lr
+    
+    # 3번째 그룹(pi_logits, log_var_c)이 존재하면 스케일에 맞춰 20배 유지
+    if len(optimizer.param_groups) > 2:
+        optimizer.param_groups[2]["lr"] = gmm_lr * 20.0
+
+    return nn_lr, gmm_lr
+'''
 def should_record_training_step(global_step: int) -> bool:
     return global_step % 50 == 0
 
@@ -708,9 +819,18 @@ def train_vade(
             {"params": model.nn_parameters(), "lr": config.lr_nn},
             {"params": model.gmm_parameters(), "lr": config.lr_gmm},
         ],
-        eps=1e-4,
+        eps=1e-8,
     )
-
+    '''
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.nn_parameters(), "lr": config.lr_nn},
+            {"params": [model.mu_c], "lr": config.lr_gmm},
+            {"params": [model.pi_logits, model.log_var_c], "lr": config.lr_gmm * 20.0}, # 스케일 20배 보정
+        ],
+        eps=1e-7, # 1e-4 -> 1e-7
+    )
+    '''
     data = torch.from_numpy(features.astype(np.float32))
     loader = torch.utils.data.DataLoader(data, batch_size=config.batch_size, shuffle=True, drop_last=False)
 
