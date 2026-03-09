@@ -1,0 +1,199 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            9ah05ms621lisu1idc3an9ye8myc58sk:
+                apple:
+                    ecpuCores: 6
+                    gpuCores: 10
+                    memoryGb: 16
+                    name: Apple M4
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "6442450944"
+                args:
+                    - mnist
+                    - --pretrain
+                    - --epochs
+                    - "700"
+                    - --device
+                    - mps
+                    - --wandb
+                    - --wandb-project
+                    - VaDE
+                    - --wandb-name
+                    - mnist-pretrain
+                    - --diagnostics
+                    - --clean-diagnostics
+                    - --seed
+                    - "7"
+                codePath: VaDE/VaDE.py
+                codePathLocal: VaDE.py
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "441295216640"
+                email: ejdwldi13@gmail.com
+                executable: /Users/limgiheon/Desktop/캡스톤/capstone4-1/.venv/bin/python
+                git:
+                    commit: d9dca1183c1ae08babb383bce844af8c5e4e2561
+                    remote: https://github.com/giheon/capstone4-1.git
+                host: imgiheon-ui-MacBookPro.local
+                memory:
+                    total: "17179869184"
+                os: macOS-15.7.1-arm64-arm-64bit
+                program: /Users/limgiheon/Desktop/캡스톤/capstone4-1/VaDE/VaDE.py
+                python: CPython 3.10.19
+                root: /Users/limgiheon/Desktop/캡스톤/capstone4-1/VaDE/wandb
+                startedAt: "2026-03-08T16:43:44.874955Z"
+                writerId: 9ah05ms621lisu1idc3an9ye8myc58sk
+        m:
+            - "1": train/epoch
+              "6":
+                - 3
+              "7": []
+            - "1": train/loss
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": train/kld_like
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": train/cat_prior
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": train/cat_entropy
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/acc
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": lr/nn
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": lr/gmm
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": train/recon
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": train/z_entropy
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/cluster_purity
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/label_purity
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+                - 5
+                - 53
+            "2":
+                - 1
+                - 5
+                - 53
+            "3":
+                - 7
+                - 13
+                - 16
+                - 61
+            "4": 3.10.19
+            "5": 0.25.0
+            "12": 0.25.0
+            "13": darwin-arm64
+alpha:
+    value: 1
+batch_size:
+    value: 100
+clean_diagnostics:
+    value: true
+data_root:
+    value: /Users/limgiheon/Desktop/캡스톤/capstone4-1/VaDE/dataset
+dataset:
+    value: mnist
+decay_gmm:
+    value: 0.9
+decay_n:
+    value: 10
+decay_nn:
+    value: 0.9
+device:
+    value: mps
+diagnostics:
+    value:
+        enabled: true
+        interval_epochs: 50
+        tsne_interval_epochs: 100
+        tsne_learning_rate: auto
+        tsne_max_iter: 1000
+        tsne_perplexity: 30
+        tsne_random_state: 42
+diagnostics_dir:
+    value: /Users/limgiheon/Desktop/캡스톤/capstone4-1/VaDE/checkpoints/vade_mnist_diagnostics
+epochs:
+    value: 700
+eval_use_mean:
+    value: true
+gmm_reg_covar:
+    value: 1e-06
+hidden_dims:
+    value:
+        - 500
+        - 500
+        - 2000
+input_dim:
+    value: 784
+latent_dim:
+    value: 10
+load_pretrained_ae:
+    value: true
+lr_gmm:
+    value: 0.002
+lr_nn:
+    value: 0.002
+n_centroid:
+    value: 10
+pretrain_epochs:
+    value: 50
+pretrain_lr:
+    value: 0.001
+reconstruction:
+    value: sigmoid
