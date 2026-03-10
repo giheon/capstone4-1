@@ -1,0 +1,13 @@
+name: array_features
+dataset_type: array
+root: data/raw/features.npy
+feature_key: x
+label_key: y
+labels_path: null
+normalize: true
+batch_size: 64
+num_workers: 4
+pin_memory: true
+persistent_workers: true
+val_fraction: 0.1
+sample_limit: null

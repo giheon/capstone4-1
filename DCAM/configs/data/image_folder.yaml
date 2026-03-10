@@ -1,0 +1,16 @@
+name: image_folder
+dataset_type: image_folder
+root: data/raw/my_images
+labels_path: null
+image_size: 28
+num_channels: 1
+normalize: true
+mean: [0.5]
+std: [0.5]
+flatten_input: false
+batch_size: 64
+num_workers: 4
+pin_memory: true
+persistent_workers: true
+val_fraction: 0.1
+sample_limit: null

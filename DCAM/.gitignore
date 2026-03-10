@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+outputs/
+wandb/
+logs/
+checkpoints/
+artifacts/
+.DS_Store

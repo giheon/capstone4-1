@@ -1,0 +1,3 @@
+[console_scripts]
+dcam-infer = dcam.infer:main
+dcam-train = dcam.train:main

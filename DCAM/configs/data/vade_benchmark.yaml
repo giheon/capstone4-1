@@ -1,0 +1,11 @@
+name: vade_benchmark
+dataset_type: vade_benchmark
+dataset_name: mnist
+data_root: null
+normalize: false
+batch_size: 256
+num_workers: 4
+pin_memory: true
+persistent_workers: true
+val_fraction: 0.1
+sample_limit: null

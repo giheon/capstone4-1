@@ -27,6 +27,9 @@ $RECYCLE.BIN/
 .DS_Store
 .AppleDouble
 .LSOverride
+.venv/
+__pycache__/
+*.pyc
 
 # Thumbnails
 ._*
@@ -45,3 +48,7 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Checkpoints
+VaDE/checkpoints/
+DCAM/checkpoints/

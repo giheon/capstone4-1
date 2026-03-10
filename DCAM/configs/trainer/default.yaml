@@ -1,0 +1,39 @@
+device: auto
+precision: 32-true
+num_nodes: 1
+devices: 1
+strategy: auto
+
+pretrain:
+  epochs: 100
+
+dcam:
+  epochs: 200
+
+optim:
+  lr_e: 1e-6
+  lr_d: 1e-3
+  lr_rho: 1e-3
+  weight_decay: 0.0
+
+scheduler:
+  factor: 0.8
+  patience: 5
+  min_lr: 1e-6
+  threshold: 1e-4
+
+curriculum:
+  t_start: 1
+  t_max: 20
+  lr_reductions_before_increase_t: 2
+  loss_floor: 1e-9
+
+logging:
+  log_every_n_steps: 20
+  eval_every_n_epochs: 1
+  silhouette_max_samples: 5000
+
+checkpoint:
+  monitor: val_rl
+  mode: min
+  save_top_k: 1

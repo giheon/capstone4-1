@@ -1,0 +1,11 @@
+name: dcam_rae
+backbone: rae
+input_shape: [1, 28, 28]
+num_clusters: 10
+latent_dim: 10
+beta: 0.09
+tau: 1.0
+rae:
+  base_channels: [32, 64]
+  repeats: 2
+  negative_slope: 0.1

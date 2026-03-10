@@ -1,0 +1,11 @@
+defaults:
+  - data: image_folder
+  - model: dcam_cae
+  - trainer: default
+  - _self_
+
+project_name: dcam_pytorch
+seed: 42
+checkpoint_path: null
+compile_model: false
+output_dir: ${hydra:run.dir}
