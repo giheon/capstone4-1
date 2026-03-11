@@ -38,6 +38,8 @@ def init_wandb_run(cfg: DictConfig):
     for metric_name in (
         "train/loss",
         "train/T",
+        "eval/rl",
+        "eval/rrl",
         "eval/sc",
         "eval/nmi",
         "eval/ari",

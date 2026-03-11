@@ -23,9 +23,8 @@ class MLPAutoencoder(BaseAutoencoder):
         input_dim: int,
         latent_dim: int,
         hidden_dims: list[int],
-        reconstruction_loss: str = "mse",
     ) -> None:
-        super().__init__(latent_dim=latent_dim, reconstruction_loss=reconstruction_loss)
+        super().__init__(latent_dim=latent_dim)
         h1, h2, h3 = hidden_dims
 
         self.encoder = nn.Sequential(

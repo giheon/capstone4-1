@@ -3,9 +3,8 @@ backbone: cae
 input_shape: [1, 28, 28]
 num_clusters: 10
 latent_dim: 10
-reconstruction_loss: mse
 beta: 0.5
-tau: 1.0
+tau: 0.1
 cae:
   filters: [32, 64, 128]
   negative_slope: 0.0

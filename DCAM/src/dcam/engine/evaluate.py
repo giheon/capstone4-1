@@ -77,7 +77,6 @@ def evaluate_model(fabric: Fabric, model, dataloader, T: int, silhouette_max_sam
     rl = reconstruction_loss_numpy(
         payload["x"],
         payload["x_hat_raw"],
-        loss_type=model.ae.reconstruction_loss,
     )
     sc = silhouette_safe(payload["v_prime"], payload["c"], max_samples=silhouette_max_samples)
     etp = entropy_of_clusters(payload["c"])
@@ -129,7 +128,6 @@ def export_inference_artifacts(
         "rl": reconstruction_loss_numpy(
             payload["x"],
             payload["x_hat_raw"],
-            loss_type=model.ae.reconstruction_loss,
         ),
         "sc": silhouette_safe(payload["v_prime"], payload["c"], max_samples=5000),
     }

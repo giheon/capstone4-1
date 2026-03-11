@@ -1,0 +1,6 @@
+- data=vade_benchmark
+- model=dcam_eae
+- data.dataset_name=mnist
+- model.num_clusters=10
+- model.latent_dim=10
+- trainer.device=mps

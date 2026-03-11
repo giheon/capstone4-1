@@ -1,0 +1,47 @@
+{
+  "os": "macOS-15.7.1-arm64-arm-64bit",
+  "python": "CPython 3.10.19",
+  "startedAt": "2026-03-11T10:58:01.751588Z",
+  "args": [
+    "data=vade_benchmark",
+    "model=dcam_eae",
+    "data.dataset_name=mnist",
+    "model.num_clusters=10",
+    "model.latent_dim=10",
+    "trainer.device=mps",
+    "trainer.pretrain.epochs=60",
+    "trainer.dcam.epochs=700"
+  ],
+  "program": "/Users/limgiheon/Desktop/캡스톤/capstone4-1/.venv/bin/dcam-train",
+  "codePath": ".venv/bin/dcam-train",
+  "codePathLocal": ".venv/bin/dcam-train",
+  "git": {
+    "remote": "https://github.com/giheon/capstone4-1.git",
+    "commit": "54810f850c0d13e672ac8d0d5b8d5ac745241713"
+  },
+  "email": "ejdwldi13@gmail.com",
+  "root": "/Users/limgiheon/Desktop/캡스톤/capstone4-1",
+  "host": "imgiheon-ui-MacBookPro.local",
+  "executable": "/Users/limgiheon/Desktop/캡스톤/capstone4-1/.venv/bin/python3.10",
+  "cpu_count": 10,
+  "cpu_count_logical": 10,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "445294850048"
+    }
+  },
+  "memory": {
+    "total": "17179869184"
+  },
+  "apple": {
+    "name": "Apple M4",
+    "ecpuCores": 6,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 16,
+    "swapTotalBytes": "7516192768",
+    "ramTotalBytes": "17179869184"
+  },
+  "writerId": "qbehfb0fybezdk4n0nz93q9omx9we2zt"
+}

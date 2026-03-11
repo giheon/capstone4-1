@@ -1,0 +1,8 @@
+{
+  "num_latent_samples": 63000,
+  "latent_dim": 10,
+  "num_clusters": 10,
+  "kmeans_init": "k-means++",
+  "kmeans_n_init": 20,
+  "random_state": 42
+}

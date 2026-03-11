@@ -8,7 +8,8 @@ Axis conventions:
     vector x: [B, F]
     v: [B, m]
     rho: [k, m]
-    x_hat: same shape as x
+    x_hat_raw: raw decoder output, same shape as x
+    x_hat: projected observation used by diagnostics/export
 """
 
 from __future__ import annotations
@@ -73,23 +74,21 @@ class DCAMModel(nn.Module):
         return ForwardOutput(x=x, v=v, v_prime=v_prime, x_hat_raw=x_hat_raw, x_hat=x_hat, trace=trace)
     
     def reconstruct_without_am(self, x: torch.Tensor) -> torch.Tensor:
-        """Return the raw decoder output used by reconstruction losses."""
+        """Return the raw decoder output used by the paper's squared-error loss."""
         return self.decode(self.encode(x))
 
     @torch.no_grad()
-    def initialize_rho_from_batch(self, x: torch.Tensor) -> None:
-        """Initialize rho from encoded random samples, matching Algorithm 1.
+    def initialize_rho_from_centroids(self, centroids: torch.Tensor) -> None:
+        """Initialize rho from precomputed latent centroids.
 
         Args:
-            x: [B, ...]
+            centroids: [k, m]
         """
-        v = self.encode(x)  # [B, m]
-        if v.shape[0] < self.k:
+        if centroids.shape != self.rho.shape:
             raise ValueError(
-                f"Need at least k={self.k} samples in the init batch, got batch_size={v.shape[0]}"
+                f"Expected centroid shape {tuple(self.rho.shape)}, got {tuple(centroids.shape)}"
             )
-        perm = torch.randperm(v.shape[0], device=v.device)[: self.k]
-        self.rho.data.copy_(v[perm].detach())
+        self.rho.data.copy_(centroids.detach())
 
     @torch.no_grad()
     def predict_clusters(self, x: torch.Tensor, T: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -120,13 +119,11 @@ class DCAMModel(nn.Module):
 def build_autoencoder(model_cfg: DictConfig, metadata: DatasetMetadata) -> BaseAutoencoder:
     backbone = model_cfg.backbone
     latent_dim = int(model_cfg.latent_dim)
-    reconstruction_loss = str(getattr(model_cfg, "reconstruction_loss", "mse")).lower()
     if backbone == "cae":
         return ConvAutoencoder(
             input_shape=list(model_cfg.input_shape or metadata.input_shape),
             latent_dim=latent_dim,
             filters=list(model_cfg.cae.filters),
-            reconstruction_loss=reconstruction_loss,
         )
     if backbone == "rae":
         return ResidualAutoencoder(
@@ -135,7 +132,6 @@ def build_autoencoder(model_cfg: DictConfig, metadata: DatasetMetadata) -> BaseA
             base_channels=list(model_cfg.rae.base_channels),
             repeats=int(model_cfg.rae.repeats),
             negative_slope=float(model_cfg.rae.negative_slope),
-            reconstruction_loss=reconstruction_loss,
         )
     if backbone == "eae":
         input_dim = int(metadata.num_features or metadata.input_shape[0])
@@ -143,7 +139,6 @@ def build_autoencoder(model_cfg: DictConfig, metadata: DatasetMetadata) -> BaseA
             input_dim=input_dim,
             latent_dim=latent_dim,
             hidden_dims=list(model_cfg.eae.hidden_dims),
-            reconstruction_loss=reconstruction_loss,
         )
     raise ValueError(f"Unsupported backbone: {backbone}")
 

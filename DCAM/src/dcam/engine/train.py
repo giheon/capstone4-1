@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import torch
 from lightning import Fabric
@@ -37,12 +38,52 @@ def _format_metric(value: float | int | None) -> str:
     return f"{value:.4f}"
 
 
+def _as_rankable_score(value: float | int | None) -> float:
+    if value is None:
+        return float("-inf")
+    value = float(value)
+    if value != value:
+        return float("-inf")
+    return value
+
+
+def _relative_reconstruction_loss(current_rl: float, pretrained_rl: float) -> float:
+    if pretrained_rl <= 0.0:
+        raise ValueError(f"pretrained_rl must be positive, got {pretrained_rl:.6f}")
+    return float((current_rl - pretrained_rl) / pretrained_rl)
+
+
+def _build_epoch_payload(
+    *,
+    epoch: int,
+    train_loss: float | None,
+    T: int,
+    lr_e: float,
+    lr_d: float,
+    lr_rho: float,
+    eval_metrics: dict[str, float | int | None],
+    pretrained_rl: float,
+) -> dict[str, Any]:
+    rl = float(eval_metrics["rl"])
+    return {
+        "epoch": epoch,
+        "T": T,
+        "train_loss": train_loss,
+        "lr_e": lr_e,
+        "lr_d": lr_d,
+        "lr_rho": lr_rho,
+        "pretrained_rl": pretrained_rl,
+        "rrl": _relative_reconstruction_loss(current_rl=rl, pretrained_rl=pretrained_rl),
+        **eval_metrics,
+    }
+
+
 def _run_training_epoch(
     fabric: Fabric,
     model,
     train_loader,
     *,
-    curriculum_state: CurriculumState,
+    T: int,
     opt_e,
     opt_d,
     opt_rho,
@@ -56,11 +97,10 @@ def _run_training_epoch(
         opt_d.zero_grad(set_to_none=True)
         opt_rho.zero_grad(set_to_none=True)
 
-        out = model(x=x, T=curriculum_state.T)
+        out = model(x=x, T=T)
         loss = reconstruction_loss_torch(
             x=out.x,
             decoder_output=out.x_hat_raw,
-            loss_type=model.ae.reconstruction_loss,
         )
         fabric.backward(loss)
         opt_e.step()
@@ -85,6 +125,8 @@ def _maybe_advance_curriculum(
     curriculum_cfg,
     reduced_lrs: tuple[bool, bool, bool],
 ) -> None:
+    # Paper-style curriculum: count LR reductions triggered by train-loss plateaus,
+    # then increase T after enough reductions have accumulated.
     if any(reduced_lrs):
         curriculum_state.lr_reduction_count += 1
     if curriculum_state.lr_reduction_count >= int(curriculum_cfg.lr_reductions_before_increase_t):
@@ -98,8 +140,8 @@ def _save_best_checkpoint(
     checkpoint_dir: Path,
     model,
     epoch: int,
+    T: int,
     payload: dict[str, float | int],
-    curriculum_state: CurriculumState,
 ) -> None:
     if not fabric.is_global_zero:
         return
@@ -108,11 +150,22 @@ def _save_best_checkpoint(
         {
             "model_state_dict": model.state_dict(),
             "epoch": epoch,
-            "T": curriculum_state.T,
+            "T": T,
             "metrics": payload,
         },
     )
     save_json(checkpoint_dir / "best_metrics.json", payload)
+
+
+def _should_replace_best_checkpoint(
+    *,
+    payload: dict[str, Any],
+    best_sc: float,
+    rrl_threshold: float,
+) -> bool:
+    rrl = float(payload["rrl"])
+    sc = _as_rankable_score(payload.get("sc"))
+    return rrl <= rrl_threshold and sc > best_sc
 
 
 def train_dcam(
@@ -129,70 +182,80 @@ def train_dcam(
     sch_rho,
     epochs: int,
     curriculum_state: CurriculumState,
+    pretrained_metrics: dict[str, float | int | None],
     curriculum_cfg,
+    checkpoint_cfg,
     logging_cfg,
     output_dir: str | Path,
     logger,
     wandb_run=None,
-) -> dict[str, float | int]:
-    best_metric = float("inf")
-    best_payload: dict[str, float | int] = {}
+) -> dict[str, Any]:
+    pretrained_rl = float(pretrained_metrics["rl"])
+    rrl_threshold = float(checkpoint_cfg.rrl_threshold)
     checkpoint_dir = Path(output_dir) / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+    lr_e, lr_d, lr_rho = _current_learning_rates(opt_e, opt_d, opt_rho)
+    best_payload = _build_epoch_payload(
+        epoch=0,
+        train_loss=None,
+        T=int(curriculum_state.T),
+        lr_e=lr_e,
+        lr_d=lr_d,
+        lr_rho=lr_rho,
+        eval_metrics=pretrained_metrics,
+        pretrained_rl=pretrained_rl,
+    )
+    best_sc = _as_rankable_score(best_payload.get("sc"))
+    _save_best_checkpoint(
+        fabric=fabric,
+        checkpoint_dir=checkpoint_dir,
+        model=model,
+        epoch=0,
+        T=int(curriculum_state.T),
+        payload=best_payload,
+    )
+
     for epoch in range(1, epochs + 1):
+        T_epoch = int(curriculum_state.T)
         train_loss = _run_training_epoch(
             fabric=fabric,
             model=model,
             train_loader=train_loader,
-            curriculum_state=curriculum_state,
+            T=T_epoch,
             opt_e=opt_e,
             opt_d=opt_d,
             opt_rho=opt_rho,
-        )
-
-        val_metrics = evaluate_model(
-            fabric=fabric,
-            model=model,
-            dataloader=val_loader if len(val_loader) > 0 else eval_loader,
-            T=curriculum_state.T,
-            silhouette_max_samples=int(logging_cfg.silhouette_max_samples),
-        )
-        val_rl = float(val_metrics["rl"])
-
-        reduced_e = _maybe_step_scheduler(sch_e, val_rl)
-        reduced_d = _maybe_step_scheduler(sch_d, val_rl)
-        reduced_rho = _maybe_step_scheduler(sch_rho, val_rl)
-        _maybe_advance_curriculum(
-            curriculum_state=curriculum_state,
-            curriculum_cfg=curriculum_cfg,
-            reduced_lrs=(reduced_e, reduced_d, reduced_rho),
         )
 
         eval_metrics = evaluate_model(
             fabric=fabric,
             model=model,
             dataloader=eval_loader,
-            T=curriculum_state.T,
+            T=T_epoch,
             silhouette_max_samples=int(logging_cfg.silhouette_max_samples),
         )
         lr_e, lr_d, lr_rho = _current_learning_rates(opt_e, opt_d, opt_rho)
-        payload = {
-            "epoch": epoch,
-            "T": curriculum_state.T,
-            "train_loss": train_loss,
-            "lr_e": lr_e,
-            "lr_d": lr_d,
-            "lr_rho": lr_rho,
-            **eval_metrics,
-        }
+        payload = _build_epoch_payload(
+            epoch=epoch,
+            train_loss=train_loss,
+            T=T_epoch,
+            lr_e=lr_e,
+            lr_d=lr_d,
+            lr_rho=lr_rho,
+            eval_metrics=eval_metrics,
+            pretrained_rl=pretrained_rl,
+        )
 
         logger.info(
-            "[dcam] epoch=%d/%d loss=%.6f T=%d nmi=%s ari=%s acc=%s sc=%s lr_e=%.2e lr_d=%.2e lr_rho=%.2e",
+            "[dcam] epoch=%d/%d loss=%.6f T=%d lr_drop_count=%d rl=%s rrl=%s nmi=%s ari=%s acc=%s sc=%s lr_e=%.2e lr_d=%.2e lr_rho=%.2e",
             epoch,
             epochs,
             train_loss,
-            curriculum_state.T,
+            T_epoch,
+            curriculum_state.lr_reduction_count,
+            _format_metric(payload["rl"]),
+            _format_metric(payload["rrl"]),
             _format_metric(eval_metrics["nmi"]),
             _format_metric(eval_metrics["ari"]),
             _format_metric(eval_metrics["acc"]),
@@ -206,7 +269,9 @@ def train_dcam(
             epoch=epoch,
             metrics={
                 "train/loss": train_loss,
-                "train/T": curriculum_state.T,
+                "train/T": T_epoch,
+                "eval/rl": payload["rl"],
+                "eval/rrl": payload["rrl"],
                 "eval/sc": eval_metrics["sc"],
                 "eval/nmi": eval_metrics["nmi"],
                 "eval/ari": eval_metrics["ari"],
@@ -227,7 +292,7 @@ def train_dcam(
                 fabric=fabric,
                 model=model,
                 dataloader=eval_loader,
-                T=curriculum_state.T,
+                T=T_epoch,
                 epoch=epoch,
                 total_epochs=epochs,
                 output_dir=output_dir,
@@ -235,19 +300,35 @@ def train_dcam(
                 wandb_run=wandb_run,
             )
 
-        if val_rl < best_metric:
-            best_metric = val_rl
+        if _should_replace_best_checkpoint(
+            payload=payload,
+            best_sc=best_sc,
+            rrl_threshold=rrl_threshold,
+        ):
             best_payload = payload
+            best_sc = _as_rankable_score(payload.get("sc"))
             _save_best_checkpoint(
                 fabric=fabric,
                 checkpoint_dir=checkpoint_dir,
                 model=model,
                 epoch=epoch,
+                T=T_epoch,
                 payload=payload,
-                curriculum_state=curriculum_state,
             )
 
-        if float(val_rl) <= float(curriculum_cfg.loss_floor):
+        reduced_e = _maybe_step_scheduler(sch_e, train_loss)
+        reduced_d = _maybe_step_scheduler(sch_d, train_loss)
+        reduced_rho = _maybe_step_scheduler(sch_rho, train_loss)
+        _maybe_advance_curriculum(
+            curriculum_state=curriculum_state,
+            curriculum_cfg=curriculum_cfg,
+            reduced_lrs=(reduced_e, reduced_d, reduced_rho),
+        )
+
+        if float(train_loss) <= float(curriculum_cfg.loss_floor):
+            break
+
+        if int(curriculum_state.T) >= int(curriculum_cfg.t_max):
             break
 
     return best_payload

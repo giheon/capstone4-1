@@ -58,9 +58,8 @@ class ResidualAutoencoder(BaseAutoencoder):
         base_channels: list[int],
         repeats: int,
         negative_slope: float,
-        reconstruction_loss: str = "mse",
     ) -> None:
-        super().__init__(latent_dim=latent_dim, reconstruction_loss=reconstruction_loss)
+        super().__init__(latent_dim=latent_dim)
         c, h, w = input_shape
         ch1, ch2 = base_channels
 

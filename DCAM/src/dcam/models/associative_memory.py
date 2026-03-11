@@ -10,7 +10,7 @@ The paper defines:
     v_{t+1} = v_t - tau * grad_v E(v_t)
 
 Using the closed-form gradient:
-    grad_v E(v) = sum_i (rho_i - v) softmax(-beta ||rho_i - v||^2)
+    grad_v E(v) = sum_i (v - rho_i) softmax(-beta ||rho_i - v||^2)
 """
 
 from __future__ import annotations
@@ -93,9 +93,9 @@ class AssociativeMemory(nn.Module):
             v_prime: [B, m]
             trace: list with T+1 entries, each [B, m]
         """
-        trace = [v]
+        trace = [v.clone()]
         v_t = v
         for _ in range(T):
             v_t = self.step(v_t=v_t, rho=rho)
-            trace.append(v_t)
+            trace.append(v_t.clone())
         return v_t, trace

@@ -39,7 +39,6 @@ def pretrain_autoencoder(
             loss = reconstruction_loss_torch(
                 x=x,
                 decoder_output=x_hat_raw,
-                loss_type=model.ae.reconstruction_loss,
             )
             fabric.backward(loss)
             optimizer.step()
@@ -59,7 +58,6 @@ def pretrain_autoencoder(
                         reconstruction_loss_torch(
                             x=x,
                             decoder_output=x_hat_raw,
-                            loss_type=model.ae.reconstruction_loss,
                         ).item()
                     )
                 )

@@ -19,8 +19,8 @@ optim:
 scheduler:
   factor: 0.8
   patience: 5
-  min_lr: 1e-6
-  threshold: 1e-4
+  min_lr: 1e-5
+  threshold: 1e-3
 
 curriculum:
   t_start: 1
@@ -39,6 +39,7 @@ logging:
   tsne_random_state: 42
 
 checkpoint:
-  monitor: val_rl
-  mode: min
+  monitor: sc_within_rrl_threshold
+  mode: max
   save_top_k: 1
+  rrl_threshold: 0.1
