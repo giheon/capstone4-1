@@ -6,14 +6,16 @@ from collections.abc import Iterable
 
 import torch
 from lightning import Fabric
-from tqdm.auto import tqdm
+
+from dcam.utils.reconstruction import reconstruction_loss_torch
+from dcam.utils.wandb import log_wandb_metrics
 
 
+def _epoch_average(losses: list[float]) -> float:
+    return sum(losses) / max(len(losses), 1)
 
-def mse_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor:
-    return torch.mean((x - x_hat) ** 2)
 
-def pretrain_autoencoder( # Pretrain e,d by minimizing ||x - d(e(x))||^2
+def pretrain_autoencoder(
     fabric: Fabric,
     model,
     train_loader: Iterable,
@@ -21,31 +23,29 @@ def pretrain_autoencoder( # Pretrain e,d by minimizing ||x - d(e(x))||^2
     optimizer: torch.optim.Optimizer,
     epochs: int,
     logger,
+    wandb_run=None,
 ) -> dict[str, float]:
-    best_val_rl = float("inf")
+    best_val_loss = float("inf")
     history: dict[str, float] = {}
 
     for epoch in range(1, epochs + 1):
-
         model.train()
-
         train_losses: list[float] = []
-        progress = tqdm(train_loader, disable=not fabric.is_global_zero, desc=f"Pretrain {epoch}/{epochs}")
 
-        for batch in progress:
+        for batch in train_loader:
             x = fabric.to_device(batch["x"])
             optimizer.zero_grad(set_to_none=True)
-
-            x_hat = model.reconstruct_without_am(x)
-            loss = mse_loss(x=x, x_hat=x_hat)
+            x_hat_raw = model.reconstruct_without_am(x)
+            loss = reconstruction_loss_torch(
+                x=x,
+                decoder_output=x_hat_raw,
+                loss_type=model.ae.reconstruction_loss,
+            )
             fabric.backward(loss)
             optimizer.step()
-
             train_losses.append(float(loss.detach().item()))
-            progress.set_postfix(train_rl=f"{train_losses[-1]:.6f}")
 
         model.eval()
-
         val_losses: list[float] = []
 
         with torch.no_grad():
@@ -53,13 +53,42 @@ def pretrain_autoencoder( # Pretrain e,d by minimizing ||x - d(e(x))||^2
                 if len(batch["x"]) == 0:
                     continue
                 x = fabric.to_device(batch["x"])
-                x_hat = model.reconstruct_without_am(x)
-                val_losses.append(float(mse_loss(x=x, x_hat=x_hat).item()))
-                
-        train_rl = sum(train_losses) / max(len(train_losses), 1)
-        val_rl = sum(val_losses) / max(len(val_losses), 1) if val_losses else train_rl
-        best_val_rl = min(best_val_rl, val_rl)
-        history = {"train_rl": train_rl, "val_rl": val_rl, "best_val_rl": best_val_rl}
-        logger.info(f"[pretrain] epoch={epoch} train_rl={train_rl:.6f} val_rl={val_rl:.6f}")
+                x_hat_raw = model.reconstruct_without_am(x)
+                val_losses.append(
+                    float(
+                        reconstruction_loss_torch(
+                            x=x,
+                            decoder_output=x_hat_raw,
+                            loss_type=model.ae.reconstruction_loss,
+                        ).item()
+                    )
+                )
+
+        train_loss = _epoch_average(train_losses)
+        val_loss = _epoch_average(val_losses) if val_losses else train_loss
+        best_val_loss = min(best_val_loss, val_loss)
+
+        history = {
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+            "best_val_loss": best_val_loss,
+        }
+
+        logger.info(
+            "[pretrain] epoch=%d/%d loss=%.6f val_loss=%.6f",
+            epoch,
+            epochs,
+            train_loss,
+            val_loss,
+        )
+        log_wandb_metrics(
+            run=wandb_run,
+            epoch=epoch,
+            axis_name="pretrain/epoch",
+            metrics={
+                "pretrain/train_loss": train_loss,
+                "pretrain/val_loss": val_loss,
+            },
+        )
 
     return history

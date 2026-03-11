@@ -52,13 +52,19 @@ class AssociativeMemory(nn.Module):
     def gradient(self, v: torch.Tensor, rho: torch.Tensor) -> torch.Tensor:
         """Closed-form gradient of E(v).
 
+        Args:
+            v:   [B, m]
+            rho: [k, m]
+
         Returns:
-            grad_E: [B, m]
+            grad_E: [B, m] = dE/dv
         """
         dist2 = self.pairwise_squared_distance(v=v, rho=rho)  # [B, k]
-        weights = torch.softmax(-self.beta * dist2, dim=1)  # weights: [B, k]
-        direction = rho[None, :, :] - v[:, None, :]  # direction: [B, k, m]
-        grad_E = (weights[:, :, None] * direction).sum(dim=1)  # grad_E: [B, m]
+        weights = torch.softmax(-self.beta * dist2, dim=1)    # [B, k]
+
+        direction = v[:, None, :] - rho[None, :, :]           # [B, k, m]
+        grad_E = (weights[:, :, None] * direction).sum(dim=1) # [B, m]
+
         return grad_E
 
     def step(self, v_t: torch.Tensor, rho: torch.Tensor) -> torch.Tensor:

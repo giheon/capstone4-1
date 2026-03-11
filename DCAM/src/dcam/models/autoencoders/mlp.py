@@ -18,8 +18,14 @@ from dcam.models.autoencoders.base import BaseAutoencoder
 
 
 class MLPAutoencoder(BaseAutoencoder):
-    def __init__(self, input_dim: int, latent_dim: int, hidden_dims: list[int]) -> None:
-        super().__init__(latent_dim=latent_dim)
+    def __init__(
+        self,
+        input_dim: int,
+        latent_dim: int,
+        hidden_dims: list[int],
+        reconstruction_loss: str = "mse",
+    ) -> None:
+        super().__init__(latent_dim=latent_dim, reconstruction_loss=reconstruction_loss)
         h1, h2, h3 = hidden_dims
 
         self.encoder = nn.Sequential(
@@ -45,4 +51,4 @@ class MLPAutoencoder(BaseAutoencoder):
         return self.encoder(x)  # v: [B, m]
 
     def decode(self, v):
-        return self.decoder(v)  # x_hat: [B, F]
+        return self.decoder(v)  # x_hat raw: [B, F]

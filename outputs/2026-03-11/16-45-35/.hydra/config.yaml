@@ -1,0 +1,77 @@
+data:
+  name: vade_benchmark
+  dataset_type: vade_benchmark
+  dataset_name: mnist
+  data_root: null
+  normalize: false
+  batch_size: 256
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  val_fraction: 0.1
+  sample_limit: null
+model:
+  name: dcam_eae
+  backbone: eae
+  input_shape: null
+  num_clusters: 10
+  latent_dim: 10
+  reconstruction_loss: bce
+  beta: 0.7
+  tau: 1.0
+  eae:
+    hidden_dims:
+    - 500
+    - 500
+    - 2000
+    activation: relu
+trainer:
+  device: mps
+  precision: 32-true
+  num_nodes: 1
+  devices: 1
+  strategy: auto
+  pretrain:
+    epochs: 300
+  dcam:
+    epochs: 700
+  optim:
+    lr_e: 1.0e-06
+    lr_d: 0.001
+    lr_rho: 0.001
+    weight_decay: 0.0
+  scheduler:
+    factor: 0.8
+    patience: 5
+    min_lr: 1.0e-06
+    threshold: 0.0001
+  curriculum:
+    t_start: 1
+    t_max: 20
+    lr_reductions_before_increase_t: 2
+    loss_floor: 1.0e-09
+  logging:
+    log_every_n_steps: 20
+    eval_every_n_epochs: 1
+    silhouette_max_samples: 5000
+    diagnostics_every_n_epochs: 100
+    tsne_perplexity: 30.0
+    tsne_learning_rate: auto
+    tsne_max_iter: 1000
+    tsne_random_state: 42
+  checkpoint:
+    monitor: val_rl
+    mode: min
+    save_top_k: 1
+project_name: dcam_pytorch
+seed: 42
+checkpoint_path: null
+compile_model: false
+output_dir: ${hydra:run.dir}
+wandb:
+  enabled: true
+  project: DCAM
+  entity: null
+  name: null
+  tags: []
+  mode: online

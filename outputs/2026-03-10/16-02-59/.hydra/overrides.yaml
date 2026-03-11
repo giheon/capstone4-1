@@ -1,0 +1,11 @@
+- data=vade_benchmark
+- model=dcam_eae
+- data.dataset_name=mnist
+- model.num_clusters=10
+- model.latent_dim=10
+- trainer.pretrain.epochs=100
+- trainer.optim.lr_d=1e-3
+- trainer.curriculum.t_start=1
+- trainer.curriculum.t_max=20
+- trainer.scheduler.factor=0.8
+- trainer.device=mps

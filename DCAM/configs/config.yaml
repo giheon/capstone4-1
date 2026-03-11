@@ -1,6 +1,6 @@
 defaults:
   - data: image_folder
-  - model: dcam_cae
+  - model: dcam_eae
   - trainer: default
   - _self_
 
@@ -9,3 +9,10 @@ seed: 42
 checkpoint_path: null
 compile_model: false
 output_dir: ${hydra:run.dir}
+wandb:
+  enabled: true
+  project: DCAM
+  entity: null
+  name: null
+  tags: []
+  mode: online

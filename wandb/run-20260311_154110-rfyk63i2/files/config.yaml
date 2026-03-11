@@ -1,0 +1,230 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            s9ex5wy4oz17rij3w47yib23tuqnvbak:
+                apple:
+                    ecpuCores: 6
+                    gpuCores: 10
+                    memoryGb: 16
+                    name: Apple M4
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "8589934592"
+                args:
+                    - data=vade_benchmark
+                    - model=dcam_eae
+                    - data.dataset_name=mnist
+                    - model.num_clusters=10
+                    - model.latent_dim=10
+                    - trainer.device=mps
+                    - trainer.pretrain.epochs=300
+                    - trainer.dcam.epochs=700
+                codePath: .venv/bin/dcam-train
+                codePathLocal: .venv/bin/dcam-train
+                cpu_count: 10
+                cpu_count_logical: 10
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "446027255808"
+                email: ejdwldi13@gmail.com
+                executable: /Users/limgiheon/Desktop/캡스톤/capstone4-1/.venv/bin/python3.10
+                git:
+                    commit: 76a8e2969caa783106a34c1f10ea1f894ebbdd02
+                    remote: https://github.com/giheon/capstone4-1.git
+                host: imgiheon-ui-MacBookPro.local
+                memory:
+                    total: "17179869184"
+                os: macOS-15.7.1-arm64-arm-64bit
+                program: /Users/limgiheon/Desktop/캡스톤/capstone4-1/.venv/bin/dcam-train
+                python: CPython 3.10.19
+                root: /Users/limgiheon/Desktop/캡스톤/capstone4-1
+                startedAt: "2026-03-11T06:41:10.213745Z"
+                writerId: s9ex5wy4oz17rij3w47yib23tuqnvbak
+        m:
+            - "1": lr/rho
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": epoch
+              "6":
+                - 3
+              "7": []
+            - "1": pretrain/train_loss
+              "5": 4
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": pretrain/epoch
+              "6":
+                - 3
+              "7": []
+            - "1": train/loss
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": train/T
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/nmi
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": lr/decoder
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": pretrain/val_loss
+              "5": 4
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/sc
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/ari
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": eval/acc
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": lr/encoder
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+                - 5
+                - 41
+                - 50
+                - 53
+                - 106
+            "2":
+                - 1
+                - 5
+                - 41
+                - 50
+                - 53
+                - 106
+            "3":
+                - 2
+                - 7
+                - 15
+                - 16
+            "4": 3.10.19
+            "5": 0.25.0
+            "12": 0.25.0
+            "13": darwin-arm64
+checkpoint_path:
+    value: null
+compile_model:
+    value: false
+data:
+    value:
+        batch_size: 256
+        data_root: null
+        dataset_name: mnist
+        dataset_type: vade_benchmark
+        name: vade_benchmark
+        normalize: false
+        num_workers: 4
+        persistent_workers: true
+        pin_memory: true
+        sample_limit: null
+        val_fraction: 0.1
+model:
+    value:
+        backbone: eae
+        beta: 0.7
+        eae:
+            activation: relu
+            hidden_dims:
+                - 500
+                - 500
+                - 2000
+        input_shape: null
+        latent_dim: 10
+        name: dcam_eae
+        num_clusters: 10
+        reconstruction_loss: bce
+        tau: 1
+output_dir:
+    value: outputs/2026-03-11/15-41-08
+project_name:
+    value: dcam_pytorch
+seed:
+    value: 42
+trainer:
+    value:
+        checkpoint:
+            mode: min
+            monitor: val_rl
+            save_top_k: 1
+        curriculum:
+            loss_floor: 1e-09
+            lr_reductions_before_increase_t: 2
+            t_max: 20
+            t_start: 1
+        dcam:
+            epochs: 700
+        device: mps
+        devices: 1
+        logging:
+            diagnostics_every_n_epochs: 100
+            eval_every_n_epochs: 1
+            log_every_n_steps: 20
+            silhouette_max_samples: 5000
+            tsne_learning_rate: auto
+            tsne_max_iter: 1000
+            tsne_perplexity: 30
+            tsne_random_state: 42
+        num_nodes: 1
+        optim:
+            lr_d: 0.001
+            lr_e: 1e-06
+            lr_rho: 0.001
+            weight_decay: 0
+        precision: 32-true
+        pretrain:
+            epochs: 300
+        scheduler:
+            factor: 0.8
+            min_lr: 1e-06
+            patience: 5
+            threshold: 0.0001
+        strategy: auto
+wandb:
+    value:
+        enabled: true
+        entity: null
+        mode: online
+        name: null
+        project: DCAM
+        tags: []

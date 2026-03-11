@@ -2,14 +2,29 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import torch
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Subset, random_split
 
-from dcam.data.datasets import ArrayDataset, ImageFolderDataset, InMemoryArrayDataset
+from dcam.data.datasets import (
+    ArrayDataset,
+    ImageFolderDataset,
+    InMemoryArrayDataset,
+    load_vade_benchmark_data,
+)
 from dcam.data.types import DatasetMetadata
+
+
+def _resolve_vade_data_root(data_root: str | None) -> str | None:
+    if data_root is not None:
+        return data_root
+    default_root = Path(__file__).resolve().parents[3] / "data" / "raw" / "vade"
+    if default_root.exists():
+        return str(default_root)
+    return None
 
 
 
@@ -51,15 +66,16 @@ def build_datasets(cfg: DictConfig) -> tuple[Any, Any, Any, DatasetMetadata]:
             dataset_type=dataset_type,
         )
     elif dataset_type == "vade_benchmark":
-        try:
-            from vade.data.datasets import load_data as load_vade_data
-        except ImportError as exc:
-            raise ImportError(
-                "dataset_type='vade_benchmark' requires the VaDE package to be installed. "
-                "Install the repository root requirements or `pip install -e ./VaDE`."
-            ) from exc
-
-        x, y = load_vade_data(dataset=str(cfg.dataset_name), data_root=cfg.data_root)
+        data_root = _resolve_vade_data_root(cfg.data_root)
+        if data_root is None:
+            raise FileNotFoundError(
+                "VaDE benchmark data root was not found. Copy the dataset under "
+                "`DCAM/data/raw/vade` or set `data.data_root=/path/to/dataset`."
+            )
+        x, y = load_vade_benchmark_data(
+            dataset=str(cfg.dataset_name),
+            data_root=data_root,
+        )
         full_dataset = InMemoryArrayDataset(
             x=x,
             y=y,

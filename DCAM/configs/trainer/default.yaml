@@ -32,6 +32,11 @@ logging:
   log_every_n_steps: 20
   eval_every_n_epochs: 1
   silhouette_max_samples: 5000
+  diagnostics_every_n_epochs: 100
+  tsne_perplexity: 30.0
+  tsne_learning_rate: auto
+  tsne_max_iter: 1000
+  tsne_random_state: 42
 
 checkpoint:
   monitor: val_rl

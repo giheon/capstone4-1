@@ -3,6 +3,7 @@ backbone: rae
 input_shape: [1, 28, 28]
 num_clusters: 10
 latent_dim: 10
+reconstruction_loss: mse
 beta: 0.09
 tau: 1.0
 rae:

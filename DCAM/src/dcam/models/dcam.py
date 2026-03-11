@@ -14,7 +14,6 @@ Axis conventions:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import torch
 from omegaconf import DictConfig
@@ -34,6 +33,7 @@ class ForwardOutput:
     x: torch.Tensor
     v: torch.Tensor
     v_prime: torch.Tensor
+    x_hat_raw: torch.Tensor
     x_hat: torch.Tensor
     trace: list[torch.Tensor]
 
@@ -51,27 +51,29 @@ class DCAMModel(nn.Module):
 
         self.am = AssociativeMemory(beta=beta, tau=tau)
 
-    @property
-    def e(self) -> BaseAutoencoder:
-        return self.ae
-
-    @property
-    def d(self) -> BaseAutoencoder:
-        return self.ae
-
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         return self.ae.encode(x)  # v: [B, m]
 
     def decode(self, v: torch.Tensor) -> torch.Tensor:
-        return self.ae.decode(v)  # x_hat: same shape as x
+        return self.ae.decode(v)  # raw decoder output: same shape as x
+
+    def decode_outputs(self, v: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return raw decoder output and the projected observation used for visualization."""
+        x_hat_raw = self.decode(v)
+        x_hat = self.ae.project_reconstruction(x_hat_raw)
+        return x_hat_raw, x_hat
+
+    def decode_observation(self, v: torch.Tensor) -> torch.Tensor:
+        return self.decode_outputs(v)[1]
 
     def forward(self, x: torch.Tensor, T: int) -> ForwardOutput:
         v = self.encode(x)  # v: [B, m]
         v_prime, trace = self.am(v=v, rho=self.rho, T=T)  # v_prime: [B, m]
-        x_hat = self.decode(v_prime)  # x_hat: same shape as x
-        return ForwardOutput(x=x, v=v, v_prime=v_prime, x_hat=x_hat, trace=trace)
-
+        x_hat_raw, x_hat = self.decode_outputs(v_prime)
+        return ForwardOutput(x=x, v=v, v_prime=v_prime, x_hat_raw=x_hat_raw, x_hat=x_hat, trace=trace)
+    
     def reconstruct_without_am(self, x: torch.Tensor) -> torch.Tensor:
+        """Return the raw decoder output used by reconstruction losses."""
         return self.decode(self.encode(x))
 
     @torch.no_grad()
@@ -111,18 +113,20 @@ class DCAMModel(nn.Module):
         Returns:
             decoded prototypes: [k, ...]
         """
-        return self.decode(self.rho)
+        return self.decode_observation(self.rho)
 
 
 
 def build_autoencoder(model_cfg: DictConfig, metadata: DatasetMetadata) -> BaseAutoencoder:
     backbone = model_cfg.backbone
     latent_dim = int(model_cfg.latent_dim)
+    reconstruction_loss = str(getattr(model_cfg, "reconstruction_loss", "mse")).lower()
     if backbone == "cae":
         return ConvAutoencoder(
             input_shape=list(model_cfg.input_shape or metadata.input_shape),
             latent_dim=latent_dim,
             filters=list(model_cfg.cae.filters),
+            reconstruction_loss=reconstruction_loss,
         )
     if backbone == "rae":
         return ResidualAutoencoder(
@@ -131,6 +135,7 @@ def build_autoencoder(model_cfg: DictConfig, metadata: DatasetMetadata) -> BaseA
             base_channels=list(model_cfg.rae.base_channels),
             repeats=int(model_cfg.rae.repeats),
             negative_slope=float(model_cfg.rae.negative_slope),
+            reconstruction_loss=reconstruction_loss,
         )
     if backbone == "eae":
         input_dim = int(metadata.num_features or metadata.input_shape[0])
@@ -138,6 +143,7 @@ def build_autoencoder(model_cfg: DictConfig, metadata: DatasetMetadata) -> BaseA
             input_dim=input_dim,
             latent_dim=latent_dim,
             hidden_dims=list(model_cfg.eae.hidden_dims),
+            reconstruction_loss=reconstruction_loss,
         )
     raise ValueError(f"Unsupported backbone: {backbone}")
 

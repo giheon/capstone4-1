@@ -27,8 +27,14 @@ class ConvShapeInfo:
 
 
 class ConvAutoencoder(BaseAutoencoder):
-    def __init__(self, input_shape: list[int], latent_dim: int, filters: list[int]) -> None:
-        super().__init__(latent_dim=latent_dim)
+    def __init__(
+        self,
+        input_shape: list[int],
+        latent_dim: int,
+        filters: list[int],
+        reconstruction_loss: str = "mse",
+    ) -> None:
+        super().__init__(latent_dim=latent_dim, reconstruction_loss=reconstruction_loss)
         c, h, w = input_shape
         f1, f2, f3 = filters
 

@@ -3,6 +3,7 @@ backbone: eae
 input_shape: null
 num_clusters: 10
 latent_dim: 10
+reconstruction_loss: bce
 beta: 0.7
 tau: 1.0
 eae:

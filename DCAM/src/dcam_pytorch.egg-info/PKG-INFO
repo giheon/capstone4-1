@@ -12,6 +12,7 @@ Requires-Dist: hydra-core<1.4,>=1.3
 Requires-Dist: omegaconf>=2.3
 Requires-Dist: numpy>=1.26
 Requires-Dist: pandas>=2.2
+Requires-Dist: scipy>=1.14
 Requires-Dist: scikit-learn>=1.5
 Requires-Dist: pillow>=10.4
 Requires-Dist: matplotlib>=3.9
@@ -20,14 +21,12 @@ Requires-Dist: rich>=13.9
 
 # DCAM (Deep Clustering with Associative Memories) — PyTorch implementation
 
-이 프로젝트는 **Deep Clustering with Associative Memories (DCAM)** 논문의 핵심 아이디어를
-**PyTorch + Lightning Fabric + Hydra** 스타일로 재구현한 코드베이스입니다.
+**Deep Clustering with Associative Memories (DCAM)** 논문의 핵심 아이디어를
+**PyTorch + Lightning Fabric + Hydra** 스타일로 구현한 코드베이스
 
 ## 구현 목표
 
-- 논문 식을 최대한 그대로 따라가되, 코드 구조는 요즘 연구/개발 코드 스타일에 맞게 구성
 - encoder `e`, decoder `d`, prototype `rho`, inverse temperature `beta`, attractor step `T`, step size `tau`
-  같은 기호를 코드 변수명에도 최대한 반영
 - 이미지 / 벡터(텍스트 TF-IDF, tabular) 데이터 모두 대응
 - 확장 가능한 AE backbone:
   - `cae`: convolutional autoencoder
@@ -75,7 +74,7 @@ pip install -r requirements.txt
 
 ## 데이터 넣는 위치
 
-### 1) 이미지 데이터
+### 1 이미지 데이터
 
 ```text
 data/raw/my_images/
@@ -98,7 +97,7 @@ data/raw/my_images/
 > 클러스터링은 비지도라서 폴더명이 라벨일 필요는 없습니다.
 > 다만 evaluation용 정답 라벨이 있으면 별도 CSV/NPY로 넣을 수 있게 해두었습니다.
 
-### 2) 벡터 / 텍스트 / tabular 데이터
+### 2 벡터 / 텍스트 / tabular 데이터
 
 지원 파일 형식:
 - `.npy`
@@ -116,6 +115,19 @@ shape 예시:
 - `[N, F]`
   - `N`: 샘플 수
   - `F`: feature dimension
+
+### 3 VaDE 벤치마크 데이터셋 직접 사용
+
+DCAM은 VaDE에서 쓰는 아래 데이터셋을 파일 변환 없이 바로 읽을 수 있습니다.
+
+- `mnist`
+- `reuters10k`
+- `har`
+- `reuters_all`
+
+Hydra data config는 `data=vade_benchmark`를 사용합니다.
+기본 경로는 `DCAM/data/raw/vade`이고, 여기에서 VaDE 벤치마크 파일을 직접 읽습니다.
+기본값은 `normalize=false`라서 원본 VaDE 전처리 스케일을 유지합니다.
 
 ## 가장 기본 실행 예시
 
@@ -141,6 +153,54 @@ dcam-train \
   model.latent_dim=46 \
   model.num_clusters=46
 ```
+
+### VaDE 데이터셋 + EAE
+
+MNIST:
+
+```bash
+dcam-train \
+  data=vade_benchmark \
+  model=dcam_eae \
+  data.dataset_name=mnist \
+  model.latent_dim=10 \
+  model.num_clusters=10
+```
+
+Reuters10k:
+
+```bash
+dcam-train \
+  data=vade_benchmark \
+  model=dcam_eae \
+  data.dataset_name=reuters10k \
+  model.latent_dim=15 \
+  model.num_clusters=4
+```
+
+HAR:
+
+```bash
+dcam-train \
+  data=vade_benchmark \
+  model=dcam_eae \
+  data.dataset_name=har \
+  model.latent_dim=120 \
+  model.num_clusters=6
+```
+
+Reuters-all:
+
+```bash
+dcam-train \
+  data=vade_benchmark \
+  model=dcam_eae \
+  data.dataset_name=reuters_all \
+  model.latent_dim=15 \
+  model.num_clusters=4
+```
+
+VaDE 원본 데이터가 기본 위치가 아니면 `data.data_root=/path/to/dataset`를 추가하면 됩니다.
 
 ## inference 예시
 
@@ -183,7 +243,7 @@ dcam-infer \
 1. 논문 본문은 **수식과 high-level architecture**는 분명하지만, 일부 세부 구현(특히 residual AE block 세부 배치)은
    축약되어 있습니다. 그래서 RAE는 논문 설명에 맞는 **합리적 residual AE**로 구현했습니다.
 2. CAE는 논문이 참조한 DCEC 계열의 `conv5_32 -> conv5_64 -> conv3_128 -> FC_d` 구조를 따릅니다.
-3. 논문은 TensorFlow로 실험했지만, 여기서는 현재 연구/개발에서 훨씬 널리 쓰이는 **PyTorch 기반**으로 옮겼습니다.
+3. 논문은 TensorFlow로 실험했지만, 여기서는 현재 연구/개발에서 훨씬 널리 쓰이는 pyTorch로 옮겼습니다.
 
 ## 추천 override 패턴
 

@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import gzip
+import pickle
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
 import pandas as pd
+import scipy.io as scio
 import torch
 from PIL import Image
+from sklearn import preprocessing
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -34,6 +39,112 @@ def _prepare_vector_features(x: np.ndarray, normalize: bool) -> np.ndarray:
         std = x.std(axis=0, keepdims=True) + 1e-8
         x = (x - mean) / std
     return x
+
+
+def _normalize_mnist_pixels(x: np.ndarray) -> np.ndarray:
+    x = x.astype(np.float32)
+    if float(np.max(x)) > 1.0:
+        x = x / 255.0
+    return x
+
+
+def _load_vade_mnist(data_root: Path) -> tuple[np.ndarray, np.ndarray]:
+    path = data_root / "mnist" / "mnist.pkl.gz"
+    with gzip.open(path, "rb") as handle:
+        (x_train, y_train), (x_test, y_test) = pickle.load(handle, encoding="bytes")
+
+    x_train = _normalize_mnist_pixels(x_train).reshape(len(x_train), -1)
+    x_test = _normalize_mnist_pixels(x_test).reshape(len(x_test), -1)
+    x = np.concatenate([x_train, x_test], axis=0).astype(np.float32)
+    y = np.concatenate([y_train, y_test], axis=0).astype(np.int64)
+    return x, y
+
+
+def _load_vade_reuters10k(data_root: Path) -> tuple[np.ndarray, np.ndarray]:
+    payload = scio.loadmat(data_root / "reuters10k" / "reuters10k.mat")
+    x = payload["X"].astype(np.float32)
+    y = payload["Y"].squeeze().astype(np.int64)
+    return x, y
+
+
+def _load_vade_har(data_root: Path) -> tuple[np.ndarray, np.ndarray]:
+    payload = scio.loadmat(data_root / "har" / "HAR.mat")
+    x = payload["X"].astype(np.float32)[:10200]
+    y = (payload["Y"].squeeze().astype(np.int64) - 1)[:10200]
+    return x, y
+
+
+def _load_vade_reuters_all(
+    data_root: Path,
+    max_features: int = 2000,
+    max_samples: int = 685000,
+) -> tuple[np.ndarray, np.ndarray]:
+    reuters_root = data_root / "reuters"
+    did_to_cat: dict[int, list[str]] = {}
+    cat_set = {"CCAT", "GCAT", "MCAT", "ECAT"}
+
+    with (reuters_root / "rcv1-v2.topics.qrels").open("r", encoding="utf-8") as handle:
+        for line in handle:
+            cat, did_raw, _ = line.strip().split(" ")
+            did = int(did_raw)
+            if cat in cat_set:
+                did_to_cat.setdefault(did, []).append(cat)
+
+    for did in list(did_to_cat):
+        if len(did_to_cat[did]) > 1:
+            del did_to_cat[did]
+
+    dat_list = [
+        "lyrl2004_tokens_test_pt0.dat",
+        "lyrl2004_tokens_test_pt1.dat",
+        "lyrl2004_tokens_test_pt2.dat",
+        "lyrl2004_tokens_test_pt3.dat",
+        "lyrl2004_tokens_train.dat",
+    ]
+
+    data: list[str] = []
+    target: list[int] = []
+    cat_to_id = {"CCAT": 0, "GCAT": 1, "MCAT": 2, "ECAT": 3}
+
+    did: int | None = None
+    doc = ""
+    for dat_name in dat_list:
+        with (reuters_root / dat_name).open("r", encoding="latin-1") as handle:
+            for line in handle:
+                if line.startswith(".I"):
+                    if did is not None and doc and did in did_to_cat:
+                        data.append(doc)
+                        target.append(cat_to_id[did_to_cat[did][0]])
+                    did = int(line.strip().split(" ")[1])
+                    doc = ""
+                    continue
+                if line.startswith(".W"):
+                    continue
+                doc += line
+
+    if did is not None and doc and did in did_to_cat:
+        data.append(doc)
+        target.append(cat_to_id[did_to_cat[did][0]])
+
+    x = CountVectorizer(dtype=np.float64, max_features=max_features).fit_transform(data)
+    x = TfidfTransformer(norm="l2", sublinear_tf=True).fit_transform(x)
+    x = np.asarray(x.todense()) * np.sqrt(x.shape[1])
+    x = preprocessing.normalize(x, norm="l2") * 200.0
+    y = np.asarray(target, dtype=np.int64)
+    return x[:max_samples].astype(np.float32), y[:max_samples]
+
+
+def load_vade_benchmark_data(dataset: str, data_root: str | Path) -> tuple[np.ndarray, np.ndarray]:
+    root = Path(data_root)
+    if dataset == "mnist":
+        return _load_vade_mnist(root)
+    if dataset == "reuters10k":
+        return _load_vade_reuters10k(root)
+    if dataset == "har":
+        return _load_vade_har(root)
+    if dataset == "reuters_all":
+        return _load_vade_reuters_all(root)
+    raise ValueError(f"Unsupported VaDE benchmark dataset: {dataset}")
 
 
 

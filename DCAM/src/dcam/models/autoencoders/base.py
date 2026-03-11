@@ -9,15 +9,21 @@ from torch import nn
 class BaseAutoencoder(nn.Module):
     """Minimal interface every DCAM backbone should follow."""
 
-    def __init__(self, latent_dim: int) -> None:
+    def __init__(self, latent_dim: int, reconstruction_loss: str = "mse") -> None:
         super().__init__()
         self.latent_dim = latent_dim
+        self.reconstruction_loss = reconstruction_loss
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
     def decode(self, v: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
+
+    def project_reconstruction(self, decoder_output: torch.Tensor) -> torch.Tensor:
+        if self.reconstruction_loss == "bce":
+            return torch.sigmoid(decoder_output)
+        return decoder_output
 
     def encoder_parameters(self):
         return [p for n, p in self.named_parameters() if n.startswith('encoder')]

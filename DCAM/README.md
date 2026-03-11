@@ -49,8 +49,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-위 설치에는 `-e ./DCAM`, `-e ./VaDE`가 포함되어 있어서 `dcam-train`, `dcam-infer` 명령이 바로 등록되고,
-DCAM에서 VaDE 벤치마크 데이터셋도 직접 불러올 수 있습니다.
+위 설치에는 `-e ./DCAM`이 포함되어 있어서 `dcam-train`, `dcam-infer` 명령이 바로 등록됩니다.
 
 ## 데이터 넣는 위치
 
@@ -106,8 +105,8 @@ DCAM은 VaDE에서 쓰는 아래 데이터셋을 파일 변환 없이 바로 읽
 - `reuters_all`
 
 Hydra data config는 `data=vade_benchmark`를 사용합니다.
-이 경로는 내부적으로 `vade.data.datasets.load_data()`를 호출하므로, VaDE 쪽 전처리를 그대로 재사용합니다.
-기본값은 `normalize=false`라서 VaDE 로더가 만든 입력 스케일을 유지합니다.
+기본 경로는 `DCAM/data/raw/vade`이고, 여기에서 VaDE 벤치마크 파일을 직접 읽습니다.
+기본값은 `normalize=false`라서 원본 VaDE 전처리 스케일을 유지합니다.
 
 ## 가장 기본 실행 예시
 
@@ -144,7 +143,8 @@ dcam-train \
   model=dcam_eae \
   data.dataset_name=mnist \
   model.latent_dim=10 \
-  model.num_clusters=10
+  model.num_clusters=10 \
+  trainer.device=mps
 ```
 
 Reuters10k:
@@ -180,7 +180,67 @@ dcam-train \
   model.num_clusters=4
 ```
 
-VaDE 원본 데이터가 기본 위치가 아니면 `data.data_root=/path/to/VaDE/dataset`를 추가하면 됩니다.
+VaDE 원본 데이터가 기본 위치가 아니면 `data.data_root=/path/to/dataset`를 추가하면 됩니다.
+
+## 학습 로그와 diagnostics
+
+기본 학습 로그는 progress bar 없이 epoch 단위로 출력됩니다.
+
+- pretrain: `epoch`, `loss`, `val_loss`
+- DCAM: `epoch`, `loss`, `T`, `nmi`, `ari`, `acc`, `sc`, `lr_e`, `lr_d`, `lr_rho`
+
+DCAM 본학습에서는 아래 diagnostics를 저장합니다.
+
+- `init/`: rho 초기화 직후, 본학습 시작 전
+- `epoch_0100/`, `epoch_0200/`, ...: `trainer.logging.diagnostics_every_n_epochs` 주기
+- `final/`: 마지막 epoch
+
+각 diagnostics 폴더에는 아래가 저장됩니다.
+
+- `tsne_true_labels.png`
+- `tsne_pred_clusters.png`
+- `cluster_label_weight_heatmap.png`
+- `label_cluster_distribution.png`
+- `tsne_points_2d.npy`
+- `tsne_centers_2d.npy`
+- `cluster_label_weight.npy`
+- `label_cluster_distribution.npy`
+- `true_labels.npy`
+- `pred_clusters.npy`
+- `rho.npy`
+
+## W&B 연동
+
+W&B는 기본적으로 켜져 있고, 기본 프로젝트 이름은 `DCAM`입니다.
+
+```bash
+dcam-train \
+  data=vade_benchmark \
+  model=dcam_eae \
+  data.dataset_name=mnist \
+  model.latent_dim=10 \
+  model.num_clusters=10 \
+  trainer.device=mps
+```
+
+W&B에 epoch마다 올라가는 scalar:
+
+- `train/loss`
+- `train/T`
+- `eval/sc`
+- `eval/nmi`
+- `eval/ari`
+- `eval/acc`
+- `lr/encoder`
+- `lr/decoder`
+- `lr/rho`
+
+W&B에 diagnostics 시점마다 올라가는 이미지:
+
+- `diagnostics/tsne_true_labels`
+- `diagnostics/tsne_pred_clusters`
+- `diagnostics/cluster_label_weight_heatmap`
+- `diagnostics/label_cluster_distribution`
 
 ## inference 예시
 

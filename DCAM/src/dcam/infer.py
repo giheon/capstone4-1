@@ -17,9 +17,9 @@ from dcam.utils.logging import get_logger
 from dcam.utils.seed import seed_everything
 
 logger = get_logger(__name__)
+CONFIG_DIR = str(Path(__file__).resolve().parents[2] / "configs")
 
-
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
+@hydra.main(version_base=None, config_path=CONFIG_DIR, config_name="config")
 def main(cfg: DictConfig) -> None:
     if cfg.checkpoint_path is None:
         raise ValueError("Set checkpoint_path=... for inference")

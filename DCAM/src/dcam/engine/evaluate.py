@@ -13,17 +13,28 @@ from dcam.metrics.clustering import (
     cluster_size_range,
     entropy_of_clusters,
     maybe_supervised_scores,
-    reconstruction_loss_numpy,
     silhouette_safe,
 )
 from dcam.utils.io import save_json, save_numpy
+from dcam.utils.reconstruction import reconstruction_loss_numpy
 from dcam.utils.visualization import save_image_grid
+
+
+def _to_numpy(value) -> np.ndarray:
+    if isinstance(value, torch.Tensor):
+        return value.detach().cpu().numpy()
+    return np.asarray(value)
+
+
+def _gather_to_numpy(fabric: Fabric, tensor: torch.Tensor) -> np.ndarray:
+    return fabric.all_gather(tensor).detach().cpu().numpy()
 
 
 @torch.no_grad()
 def collect_outputs(fabric: Fabric, model, dataloader, T: int):
     model.eval()
     x_all: list[np.ndarray] = []
+    x_hat_raw_all: list[np.ndarray] = []
     x_hat_all: list[np.ndarray] = []
     v_all: list[np.ndarray] = []
     v_prime_all: list[np.ndarray] = []
@@ -37,18 +48,20 @@ def collect_outputs(fabric: Fabric, model, dataloader, T: int):
         idx = batch["index"]
 
         v, v_prime, c = model.predict_clusters(x=x, T=T)
-        x_hat = model.decode(v_prime)
+        x_hat_raw, x_hat = model.decode_outputs(v_prime)
 
-        x_all.append(fabric.all_gather(x).detach().cpu().numpy())
-        x_hat_all.append(fabric.all_gather(x_hat).detach().cpu().numpy())
-        v_all.append(fabric.all_gather(v).detach().cpu().numpy())
-        v_prime_all.append(fabric.all_gather(v_prime).detach().cpu().numpy())
-        c_all.append(fabric.all_gather(c).detach().cpu().numpy())
-        y_all.append(y.detach().cpu().numpy() if isinstance(y, torch.Tensor) else np.asarray(y))
-        idx_all.append(idx.detach().cpu().numpy() if isinstance(idx, torch.Tensor) else np.asarray(idx))
+        x_all.append(_gather_to_numpy(fabric, x))
+        x_hat_raw_all.append(_gather_to_numpy(fabric, x_hat_raw))
+        x_hat_all.append(_gather_to_numpy(fabric, x_hat))
+        v_all.append(_gather_to_numpy(fabric, v))
+        v_prime_all.append(_gather_to_numpy(fabric, v_prime))
+        c_all.append(_gather_to_numpy(fabric, c))
+        y_all.append(_to_numpy(y))
+        idx_all.append(_to_numpy(idx))
 
     return {
         "x": np.concatenate(x_all, axis=0),
+        "x_hat_raw": np.concatenate(x_hat_raw_all, axis=0),
         "x_hat": np.concatenate(x_hat_all, axis=0),
         "v": np.concatenate(v_all, axis=0),
         "v_prime": np.concatenate(v_prime_all, axis=0),
@@ -61,7 +74,11 @@ def collect_outputs(fabric: Fabric, model, dataloader, T: int):
 @torch.no_grad()
 def evaluate_model(fabric: Fabric, model, dataloader, T: int, silhouette_max_samples: int) -> dict[str, float | int | None]:
     payload = collect_outputs(fabric=fabric, model=model, dataloader=dataloader, T=T)
-    rl = reconstruction_loss_numpy(payload["x"], payload["x_hat"])
+    rl = reconstruction_loss_numpy(
+        payload["x"],
+        payload["x_hat_raw"],
+        loss_type=model.ae.reconstruction_loss,
+    )
     sc = silhouette_safe(payload["v_prime"], payload["c"], max_samples=silhouette_max_samples)
     etp = entropy_of_clusters(payload["c"])
     cs_max, cs_min = cluster_size_range(payload["c"])
@@ -109,7 +126,11 @@ def export_inference_artifacts(
     ).to_csv(output_dir / "cluster_assignments.csv", index=False)
 
     metrics = {
-        "rl": reconstruction_loss_numpy(payload["x"], payload["x_hat"]),
+        "rl": reconstruction_loss_numpy(
+            payload["x"],
+            payload["x_hat_raw"],
+            loss_type=model.ae.reconstruction_loss,
+        ),
         "sc": silhouette_safe(payload["v_prime"], payload["c"], max_samples=5000),
     }
     save_json(output_dir / "inference_metrics.json", metrics)
