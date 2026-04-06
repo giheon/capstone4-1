@@ -1,0 +1,46 @@
+{
+  "subjects": [
+    {
+      "subject": "수학 I",
+      "chapters": [
+        {
+          "chapter_id": "MATH1_CH01",
+          "sections": [
+            {
+              "section_id": "MATH1_CH01_SEC01",
+              "entries": [
+                {"concept_id": "MATH1_CH01_CONCEPT_POLYNOMIAL", "canonical_ko": "다항식", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "MATH1_CH01_CONCEPT_REMAINDER", "canonical_ko": "나머지정리", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "MATH1_CH01_CONCEPT_FACTOR", "canonical_ko": "인수분해", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH1_CH02",
+          "sections": [
+            {
+              "section_id": "MATH1_CH02_SEC01",
+              "entries": [
+                {"concept_id": "MATH1_CH02_CONCEPT_EQUATION", "canonical_ko": "방정식", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "MATH1_CH02_CONCEPT_INEQUALITY", "canonical_ko": "부등식", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH1_CH03",
+          "sections": [
+            {
+              "section_id": "MATH1_CH03_SEC01",
+              "entries": [
+                {"concept_id": "MATH1_CH03_CONCEPT_EXPONENT", "canonical_ko": "지수", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "MATH1_CH03_CONCEPT_LOGARITHM", "canonical_ko": "로그", "type": "concept", "aliases": [], "latex_patterns": ["\\log"]}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

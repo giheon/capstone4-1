@@ -1,0 +1,45 @@
+{
+  "subjects": [
+    {
+      "subject": "미적분",
+      "chapters": [
+        {
+          "chapter_id": "CALC_CH01",
+          "sections": [
+            {
+              "section_id": "CALC_CH01_SEC01",
+              "entries": [
+                {"concept_id": "CALC_CH01_CONCEPT_SEQUENCE_LIMIT", "canonical_ko": "수열의 극한", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "CALC_CH01_CONCEPT_SERIES", "canonical_ko": "급수", "type": "concept", "aliases": ["series"], "latex_patterns": ["\\sum"]}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "CALC_CH02",
+          "sections": [
+            {
+              "section_id": "CALC_CH02_SEC01",
+              "entries": [
+                {"concept_id": "CALC_CH02_CONCEPT_TRIG_LIMIT", "canonical_ko": "삼각함수 극한", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "CALC_CH02_CONCEPT_TRIG_DERIVATIVE", "canonical_ko": "삼각함수 미분", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "CALC_CH03",
+          "sections": [
+            {
+              "section_id": "CALC_CH03_SEC01",
+              "entries": [
+                {"concept_id": "CALC_CH03_CONCEPT_PARTIAL_FRACTION", "canonical_ko": "부분분수", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "CALC_CH03_CONCEPT_SUBSTITUTION", "canonical_ko": "치환적분", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "subjects": [
+    {
+      "subject": "기하",
+      "chapters": [
+        {
+          "chapter_id": "GEOM_CH01",
+          "sections": [
+            {
+              "section_id": "GEOM_CH01_SEC01",
+              "entries": [
+                {"concept_id": "GEOM_CH01_CONCEPT_CONIC_PARABOLA", "canonical_ko": "포물선", "type": "concept", "aliases": ["parabola"], "latex_patterns": []},
+                {"concept_id": "GEOM_CH01_CONCEPT_CONIC_ELLIPSE", "canonical_ko": "타원", "type": "concept", "aliases": ["ellipse"], "latex_patterns": []},
+                {"concept_id": "GEOM_CH01_CONCEPT_CONIC_HYPERBOLA", "canonical_ko": "쌍곡선", "type": "concept", "aliases": ["hyperbola"], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "GEOM_CH02",
+          "sections": [
+            {
+              "section_id": "GEOM_CH02_SEC01",
+              "entries": [
+                {"concept_id": "GEOM_CH02_CONCEPT_VECTOR", "canonical_ko": "벡터", "type": "concept", "aliases": ["vector"], "latex_patterns": ["\\vec"]},
+                {"concept_id": "GEOM_CH02_CONCEPT_INNER_PRODUCT", "canonical_ko": "내적", "type": "concept", "aliases": ["dot product"], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "GEOM_CH03",
+          "sections": [
+            {
+              "section_id": "GEOM_CH03_SEC01",
+              "entries": [
+                {"concept_id": "GEOM_CH03_CONCEPT_SPACE_COORD", "canonical_ko": "공간좌표", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "GEOM_CH03_CONCEPT_SPACE_VECTOR", "canonical_ko": "공간벡터", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

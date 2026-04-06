@@ -1,0 +1,71 @@
+{
+  "subjects": [
+    {
+      "subject": "수학 I",
+      "chapters": [
+        {
+          "chapter_id": "MATH1_CH01",
+          "sections": [
+            {
+              "section_id": "MATH1_CH01_SEC01",
+              "entries": [
+                {"concept_id": "MATH1_CH01_CONCEPT_POLYNOMIAL", "canonical_ko": "다항식", "type": "concept", "aliases": ["polynomial"], "latex_patterns": []},
+                {"concept_id": "MATH1_CH01_CONCEPT_EQUATION", "canonical_ko": "방정식", "type": "concept", "aliases": ["equation"], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH1_CH02",
+          "sections": [
+            {
+              "section_id": "MATH1_CH02_SEC01",
+              "entries": [
+                {"concept_id": "MATH1_CH02_CONCEPT_FUNCTION", "canonical_ko": "함수", "type": "concept", "aliases": ["function"], "latex_patterns": ["f(x)"]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "수학 II",
+      "chapters": [
+        {
+          "chapter_id": "MATH2_CH01",
+          "sections": [
+            {
+              "section_id": "MATH2_CH01_SEC01",
+              "entries": [
+                {"concept_id": "MATH2_CH01_CONCEPT_LIMIT", "canonical_ko": "극한", "type": "concept", "aliases": ["limit"], "latex_patterns": ["\\lim"]}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH2_CH02",
+          "sections": [
+            {
+              "section_id": "MATH2_CH02_SEC01",
+              "entries": [
+                {"concept_id": "MATH2_CH02_CONCEPT_DERIVATIVE", "canonical_ko": "미분", "type": "concept", "aliases": ["derivative"], "latex_patterns": ["\\frac{d}{dx}", "f'(x)"]}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH2_CH03",
+          "sections": [
+            {
+              "section_id": "MATH2_CH03_SEC01",
+              "entries": [
+                {"concept_id": "MATH2_CH03_CONCEPT_INTEGRAL", "canonical_ko": "적분", "type": "concept", "aliases": ["integral"], "latex_patterns": ["\\int"]},
+                {"concept_id": "MATH2_CH03_CONCEPT_DEFINITE_INTEGRAL", "canonical_ko": "정적분", "type": "concept", "aliases": ["definite integral"], "latex_patterns": ["\\int_{a}^{b}"]}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "subjects": [
+    {
+      "subject": "수학 II",
+      "chapters": [
+        {
+          "chapter_id": "MATH2_CH01",
+          "sections": [
+            {
+              "section_id": "MATH2_CH01_SEC01",
+              "entries": [
+                {"concept_id": "MATH2_CH01_CONCEPT_LIMIT", "canonical_ko": "극한", "type": "concept", "aliases": ["limit"], "latex_patterns": ["\\lim"]},
+                {"concept_id": "MATH2_CH01_CONCEPT_CONTINUITY", "canonical_ko": "연속", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH2_CH02",
+          "sections": [
+            {
+              "section_id": "MATH2_CH02_SEC01",
+              "entries": [
+                {"concept_id": "MATH2_CH02_CONCEPT_DERIVATIVE", "canonical_ko": "미분", "type": "concept", "aliases": ["derivative"], "latex_patterns": ["\\frac{d}{dx}"]},
+                {"concept_id": "MATH2_CH02_CONCEPT_DERIVATIVE_FORMULA", "canonical_ko": "미분공식", "type": "concept", "aliases": [], "latex_patterns": []}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "MATH2_CH03",
+          "sections": [
+            {
+              "section_id": "MATH2_CH03_SEC01",
+              "entries": [
+                {"concept_id": "MATH2_CH03_CONCEPT_INTEGRAL", "canonical_ko": "적분", "type": "concept", "aliases": ["integral"], "latex_patterns": ["\\int"]},
+                {"concept_id": "MATH2_CH03_CONCEPT_DEFINITE_INTEGRAL", "canonical_ko": "정적분", "type": "concept", "aliases": [], "latex_patterns": ["\\int_{a}^{b}"]}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

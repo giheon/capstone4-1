@@ -1,0 +1,46 @@
+{
+  "subjects": [
+    {
+      "subject": "확률과 통계",
+      "chapters": [
+        {
+          "chapter_id": "PROB_CH01",
+          "sections": [
+            {
+              "section_id": "PROB_CH01_SEC01",
+              "entries": [
+                {"concept_id": "PROB_CH01_CONCEPT_COUNTING", "canonical_ko": "경우의 수", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "PROB_CH01_CONCEPT_PERMUTATION", "canonical_ko": "순열", "type": "concept", "aliases": ["permutation"], "latex_patterns": ["P", "_nP_r"]},
+                {"concept_id": "PROB_CH01_CONCEPT_COMBINATION", "canonical_ko": "조합", "type": "concept", "aliases": ["combination"], "latex_patterns": ["C", "_nC_r"]}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "PROB_CH02",
+          "sections": [
+            {
+              "section_id": "PROB_CH02_SEC01",
+              "entries": [
+                {"concept_id": "PROB_CH02_CONCEPT_PROBABILITY", "canonical_ko": "확률", "type": "concept", "aliases": ["probability"], "latex_patterns": ["P("]},
+                {"concept_id": "PROB_CH02_CONCEPT_CONDITIONAL", "canonical_ko": "조건부확률", "type": "concept", "aliases": [], "latex_patterns": ["P(A|B)"]}
+              ]
+            }
+          ]
+        },
+        {
+          "chapter_id": "PROB_CH03",
+          "sections": [
+            {
+              "section_id": "PROB_CH03_SEC01",
+              "entries": [
+                {"concept_id": "PROB_CH03_CONCEPT_DISTRIBUTION", "canonical_ko": "확률분포", "type": "concept", "aliases": [], "latex_patterns": []},
+                {"concept_id": "PROB_CH03_CONCEPT_NORMAL", "canonical_ko": "정규분포", "type": "concept", "aliases": ["normal distribution"], "latex_patterns": ["N(", "\\mu", "\\sigma"]}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
