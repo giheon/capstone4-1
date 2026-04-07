@@ -78,21 +78,24 @@ VITE_API_URL=http://localhost:8000
 
 ## Docker 실행
 
-### 백엔드
+루트에서 한 번에 실행할 수 있습니다.
 
 ```bash
-cd capstone4-1-backend
+cp capstone4-1-backend/.env.example capstone4-1-backend/.env
 docker compose up --build
 ```
 
-### 프론트엔드
+이 명령으로 백엔드와 프론트가 각각 다른 컨테이너로 함께 실행됩니다.
 
-```bash
-cd capstone4-1-frontend
-docker compose up --build
-```
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
 
-프론트 Docker는 Vite 결과물을 Nginx로 서빙합니다.  
+개별 실행도 가능합니다.
+
+- 백엔드만: [capstone4-1-backend/docker-compose.yml](/Users/limgiheon/Desktop/캡스톤/capstone4-1/캡스톤4-1/capstone4-1-backend/docker-compose.yml)
+- 프론트만: [capstone4-1-frontend/docker-compose.yml](/Users/limgiheon/Desktop/캡스톤/capstone4-1/캡스톤4-1/capstone4-1-frontend/docker-compose.yml)
+
+프론트 Docker는 Vite 결과물을 Nginx로 서빙합니다.
 [capstone4-1-frontend/nginx.conf](/Users/limgiheon/Desktop/캡스톤/capstone4-1/캡스톤4-1/capstone4-1-frontend/nginx.conf)는 정적 파일 서빙, SPA 라우팅 fallback, `/healthz` 헬스체크를 담당합니다.
 
 ## API
