@@ -1,187 +1,114 @@
 # 수능 수학 문제 풀이 분석 플랫폼
 
-수능 수학 문제를 이미지로 업로드하면 AI가 문제를 분석하고 단계별 풀이와 관련 개념을 제공하는 플랫폼입니다.
+수능 수학 문제를 이미지 또는 텍스트로 입력하면 난이도 분류, 풀이, 답, 개념, 흐름을 반환하는 프로젝트입니다.  
+구성은 `FastAPI 백엔드`와 `React + Vite 프론트엔드`로 나뉘며, 문서는 이 README 하나만 유지합니다.
 
-## 프로젝트 구조
+## 구조
 
-```
-App/
-├── capstone4-1-backend/     # FastAPI 백엔드
+```text
+.
+├── requirements.txt              # 루트 Python 의존성 파일
+├── capstone4-1-backend/          # FastAPI + LangGraph
 │   ├── app/
-│   │   ├── api/             # API 라우트
-│   │   ├── core/            # 설정, 로깅
-│   │   ├── domain/          # 비즈니스 로직 (개념 카탈로그 등)
-│   │   ├── llm/             # LLM 클라이언트
-│   │   ├── schemas/         # Pydantic 스키마
-│   │   ├── workflows/       # LangGraph 워크플로우
-│   │   └── main.py          # FastAPI 앱 진입점
-│   ├── tests/               # 테스트
-│   ├── requirements.txt     # Python 의존성
+│   ├── tests/
 │   ├── Dockerfile
-│   └── docker-compose.yml
-│
-└── capstone4-1-frontend/    # React + Vite 프론트엔드
+│   ├── docker-compose.yml
+│   └── .env.example
+└── capstone4-1-frontend/         # React + Vite + Nginx
     ├── src/
-    │   ├── api/             # API 호출
-    │   ├── components/      # UI 컴포넌트
-    │   ├── context/         # React Context
-    │   ├── pages/           # 페이지 컴포넌트
-    │   └── routes.tsx       # 라우팅
-    ├── package.json
-    └── vite.config.ts
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── nginx.conf
+    └── .env.example
 ```
 
 ## 기술 스택
 
-### Backend
-- **Python 3.11+**
-- **FastAPI** - 웹 프레임워크
-- **LangGraph** - LLM 워크플로우
-- **OpenAI API** - GPT 모델 활용
-- **Uvicorn** - ASGI 서버
+- Backend: Python, FastAPI, LangGraph, OpenAI API, Uvicorn
+- Frontend: React, TypeScript, Vite, Tailwind CSS, Radix UI
+- Infra: Docker, Docker Compose, Nginx
 
-### Frontend
-- **React 18** + **TypeScript**
-- **Vite** - 빌드 도구
-- **Tailwind CSS** - 스타일링
-- **Radix UI** - UI 컴포넌트
-- **React Router** - 라우팅
-- **KaTeX** - 수학 수식 렌더링
+## 환경 관리 원칙
 
----
+- Python 가상환경은 루트 `.venv` 하나만 사용합니다.
+- 백엔드는 루트 `requirements.txt`를 사용합니다.
+- 프론트는 Node.js 프로젝트라 `package.json`과 `node_modules`로 의존성을 관리합니다.
 
-## 실행 방법
+## 로컬 실행
 
-### 사전 요구사항
-- Python 3.11 이상
-- Node.js 18 이상
-- OpenAI API Key
-
----
-
-### 1. Backend 실행
+### 1. 백엔드
 
 ```bash
-# 백엔드 디렉토리로 이동
-cd capstone4-1-backend
-
-# 가상환경 생성 및 활성화
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 의존성 설치
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# 환경변수 설정
-cp .env.example .env
-# .env 파일을 열어서 OPENAI_API_KEY 설정
+cp capstone4-1-backend/.env.example capstone4-1-backend/.env
+cd capstone4-1-backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**.env 파일 설정:**
+백엔드 환경변수:
+
 ```env
-OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_API_KEY=your_openai_api_key
 APP_ENV=local
 LOG_LEVEL=INFO
 MAX_IMAGE_SIZE_MB=10
 ```
 
-```bash
-# 서버 실행 (http://localhost:8000)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-#### Docker로 실행 (선택사항)
-```bash
-cd capstone4-1-backend
-docker-compose up --build
-```
-
----
-
-### 2. Frontend 실행
+### 2. 프론트엔드
 
 ```bash
-# 프론트엔드 디렉토리로 이동
 cd capstone4-1-frontend
-
-# 의존성 설치
 npm install
-
-# 환경변수 설정
 cp .env.example .env
-# .env 파일 확인 (기본값: http://localhost:8000)
+npm run dev
 ```
 
-**.env 파일 설정:**
+프론트 환경변수:
+
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
-```bash
-# 개발 서버 실행 (http://localhost:3000)
-npm run dev
+개발 접속 주소:
 
-# 프로덕션 빌드
-npm run build
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
+
+## Docker 실행
+
+### 백엔드
+
+```bash
+cd capstone4-1-backend
+docker compose up --build
 ```
 
----
+### 프론트엔드
 
-### 3. 전체 실행 순서
+```bash
+cd capstone4-1-frontend
+docker compose up --build
+```
 
-1. **터미널 1 - Backend:**
-   ```bash
-   cd capstone4-1-backend
-   source venv/bin/activate
-   uvicorn app.main:app --reload --port 8000
-   ```
+프론트 Docker는 Vite 결과물을 Nginx로 서빙합니다.  
+[capstone4-1-frontend/nginx.conf](/Users/limgiheon/Desktop/캡스톤/capstone4-1/캡스톤4-1/capstone4-1-frontend/nginx.conf)는 정적 파일 서빙, SPA 라우팅 fallback, `/healthz` 헬스체크를 담당합니다.
 
-2. **터미널 2 - Frontend:**
-   ```bash
-   cd capstone4-1-frontend
-   npm run dev
-   ```
+## API
 
-3. 브라우저에서 `http://localhost:3000` 접속
+- `GET /api/v1/health`
+- `POST /api/v1/solve`
 
----
+`POST /api/v1/solve`는 `multipart/form-data`를 받습니다.
 
-## API 엔드포인트
+- `question_text: str | None`
+- `image: UploadFile | None`
 
-| Method | Endpoint | 설명 |
-|--------|----------|------|
-| GET | `/api/v1/health` | 서버 상태 확인 |
-| POST | `/api/v1/solve` | 수학 문제 풀이 요청 |
+둘 중 하나는 반드시 있어야 합니다.
 
----
+## 메모
 
-## 주요 기능
-
-1. **문제 이미지 업로드** - 수능 수학 문제 이미지를 업로드
-2. **AI 문제 분석** - GPT 모델이 문제를 인식하고 분석
-3. **단계별 풀이 제공** - 상세한 풀이 과정 제시
-4. **관련 개념 연결** - 문제와 관련된 수학 개념 제공
-5. **수식 렌더링** - KaTeX를 활용한 수학 수식 표시
-
----
-
-## 환경변수 요약
-
-### Backend (.env)
-| 변수명 | 설명 | 기본값 |
-|--------|------|--------|
-| `OPENAI_API_KEY` | OpenAI API 키 (필수) | - |
-| `APP_ENV` | 실행 환경 | `local` |
-| `LOG_LEVEL` | 로그 레벨 | `INFO` |
-| `MAX_IMAGE_SIZE_MB` | 최대 이미지 크기 | `10` |
-
-### Frontend (.env)
-| 변수명 | 설명 | 기본값 |
-|--------|------|--------|
-| `VITE_API_URL` | 백엔드 API URL | `http://localhost:8000` |
-
----
-
-## 라이선스
-
-이 프로젝트는 학술 목적으로 개발되었습니다.
+- 프론트 빌드 시 `500kB` 번들 경고가 나올 수 있습니다.
+  의미는 빌드는 성공했지만 초기 JS 크기가 커서 최적화 여지가 있다는 뜻입니다.
+- 루트 `.gitignore` 하나로 백엔드와 프론트의 산출물, 가상환경, 캐시를 함께 관리합니다.

@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: capstone4-1-backend/Dockerfile
     ports:
       - "8000:8000"
     env_file:
