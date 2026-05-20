@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Android 빌드 서비스
+  android-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: math-ai-android-build
+    volumes:
+      # 빌드 결과물 마운트
+      - ./app/build/outputs:/app/app/build/outputs
+      # Gradle 캐시 마운트 (빌드 속도 향상)
+      - gradle-cache:/root/.gradle
+    environment:
+      - GRADLE_OPTS=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError
+    command: ./gradlew assembleDebug --no-daemon
+
+  # Release 빌드 서비스
+  android-release:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: math-ai-android-release
+    volumes:
+      - ./app/build/outputs:/app/app/build/outputs
+      - gradle-cache:/root/.gradle
+    environment:
+      - GRADLE_OPTS=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError
+    command: ./gradlew assembleRelease --no-daemon
+
+  # 테스트 실행 서비스
+  android-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: math-ai-android-test
+    volumes:
+      - ./app/build/reports:/app/app/build/reports
+      - gradle-cache:/root/.gradle
+    command: ./gradlew test --no-daemon
+
+  # Lint 검사 서비스
+  android-lint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: math-ai-android-lint
+    volumes:
+      - ./app/build/reports:/app/app/build/reports
+      - gradle-cache:/root/.gradle
+    command: ./gradlew lint --no-daemon
+
+volumes:
+  gradle-cache:
+    driver: local

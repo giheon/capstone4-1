@@ -1,0 +1,61 @@
+# Android Studio
+*.iml
+.gradle/
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+
+# Build outputs
+/build
+/app/build
+/captures
+
+# Native
+.externalNativeBuild
+.cxx
+
+# Local configuration
+local.properties
+
+# macOS
+.DS_Store
+*.swp
+
+# Keystore (보안상 제외)
+*.jks
+*.keystore
+
+# Generated files
+app/src/main/gen/
+
+# Proguard
+app/proguard-mapping.txt
+
+# Test reports (선택적)
+# /app/build/reports
+
+# APK/AAB files (선택적 - 빌드 결과물)
+# *.apk
+# *.aab
+
+# Docker
+.docker/
+
+# Python Backend
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+*.egg-info/
+.pytest_cache/
+
+# IDE
+.vscode/
+*.code-workspace

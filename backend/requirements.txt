@@ -1,0 +1,24 @@
+# LangChain & LangGraph
+langchain>=0.1.0
+langgraph>=0.0.40
+langchain-openai>=0.0.5
+langsmith>=0.0.80
+
+# FastAPI
+fastapi>=0.109.0
+uvicorn>=0.27.0
+python-multipart>=0.0.6
+
+# OpenAI
+openai>=1.10.0
+
+# Image Processing
+pillow>=10.2.0
+base64
+
+# Environment
+python-dotenv>=1.0.0
+
+# Async
+httpx>=0.26.0
+sse-starlette>=1.8.0
