@@ -2,6 +2,7 @@
 langchain>=0.1.0
 langgraph>=0.0.40
 langchain-openai>=0.0.5
+langchain-core>=0.1.0
 langsmith>=0.0.80
 
 # FastAPI
@@ -14,11 +15,14 @@ openai>=1.10.0
 
 # Image Processing
 pillow>=10.2.0
-base64
 
 # Environment
 python-dotenv>=1.0.0
 
-# Async
+# Async & SSE
 httpx>=0.26.0
 sse-starlette>=1.8.0
+aiohttp>=3.9.0
+
+# Pydantic
+pydantic>=2.0.0

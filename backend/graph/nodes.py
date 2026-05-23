@@ -1,320 +1,482 @@
 """
 LangGraph Nodes for Math Explanation Generation
+
+Node 1: OCR + Routing (통합) - LCEL 사용
+Node 2: Explanation Generation (3회 병렬 호출) - LCEL 사용
+Node 3: Hard Gate (검증 & 선택) - 순수 코드
 """
 import json
-import base64
-from typing import Dict, Any
+import re
+import random
+import asyncio
+from typing import Dict, Any, List
+from collections import Counter
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 
-from .state import (
-    MathExplanationState,
-    DIFFICULTY_THRESHOLDS,
-    QUALITY_THRESHOLD,
-    MAX_RETRIES
+from .state import MathExplanationState
+
+# Config에서 설정 import
+import sys
+sys.path.append('..')
+from config import (
+    UNITS,
+    MODEL_ROUTING,
+    DEFAULT_MODEL,
+    OCR_MODEL,
+    EXPLANATION_PROMPTS,
+    FEW_SHOT_EXAMPLES,
+    OCR_ROUTING_SYSTEM_PROMPT,
+    OCR_ROUTING_USER_PROMPT,
+    EXPLANATION_SYSTEM_PROMPT,
+    OCR_TEMPERATURE,
+    EXPLANATION_TEMPERATURE,
+    PARALLEL_CALL_COUNT
 )
 
-# Prompts are defined inline to avoid import issues
-SYSTEM_PROMPT = """당신은 수능 수학 전문 튜터입니다.
-학생이 스스로 문제를 풀 수 있도록 '재현 가능한 사고 과정'을 제시하는 것이 목표입니다.
 
-## 핵심 원칙
-1. 모든 조건을 빠짐없이 활용할 것
-2. 각 단계에서 "왜 이 방법을 선택했는가"를 명시할 것
-3. 수식은 LaTeX 형식으로 작성할 것 (예: $\\frac{1}{2}$, $\\sin\\theta$)
-4. 결론 연결 시 "∴" 기호를 사용할 것
+# ═══════════════════════════════════════════════════════════════════════════
+# 모델 초기화
+# ═══════════════════════════════════════════════════════════════════════════
 
-## 출력 형식
-반드시 아래 JSON 형식으로 출력하세요:
-
-{
-    "section_review": "문제 리뷰 내용",
-    "section_interpret": "조건 해석 내용",
-    "section_solve": "문제 풀이 내용 (STEP 포함)",
-    "answer": "최종 정답"
-}"""
-
-EXPLANATION_PROMPT = """
-## 문제
-{problem_text}
-
-## 문제 유형
-{problem_type}
-
-## 해설 작성 지침
-
-### 1. 문제 리뷰
-- 문제 상황을 간결하게 요약
-- 구하고자 하는 것을 명확히 명시
-
-### 2. 조건 해석
-- 각 조건의 수학적 의미를 분석
-- 조건들 간의 연결고리를 파악
-
-### 3. 문제 풀이
-- STEP 단위로 논리적 전개
-- 각 STEP에서 사용한 조건과 이유 명시
-- 중간 결론은 "∴"로 연결
-
-### 4. 정답
-- 최종 답만 간결하게
-
-위 지침에 따라 JSON 형식으로 해설을 작성하세요.
-"""
-
-OCR_PROMPT = """이미지에서 수학 문제를 정확하게 텍스트로 추출하세요.
-수식은 LaTeX 형식으로 변환하세요.
-
-출력 형식:
-{
-    "problem_text": "문제 전체 내용",
-    "problem_type": "미적분/확률과통계/기하/수학1/수학2"
-}"""
-
-DIFFICULTY_PROMPT = """다음 수학 문제의 난이도를 분류하세요.
-
-## 문제
-{problem_text}
-
-## 난이도 기준
-- 킬러: 복합 개념, 비정형 접근 (수능 21,22,29,30번)
-- 준킬러: 2-3개 개념 결합 (수능 20,28번)
-- 일반: 단일 개념 (수능 1-19,23-27번)
-
-출력:
-{{"difficulty": "킬러/준킬러/일반", "problem_type": "유형", "reasoning": "이유"}}
-"""
-
-QUALITY_EVALUATION_PROMPT = """다음 수학 해설의 품질을 평가하세요.
-
-## 원본 문제
-{problem_text}
-
-## 생성된 해설
-{explanation}
-
-## 평가 기준 (각 0-100점)
-1. 조건 사용 완전성 (25%)
-2. 논리 전개 명확성 (25%)
-3. 재현 가능성 (30%)
-4. 수식 표현 정확성 (20%)
-
-출력:
-{{"total_score": 점수, "feedback": "개선점", "pass": true/false}}
-"""
-
-REGENERATION_PROMPT = """이전 해설이 품질 기준을 충족하지 못했습니다.
-
-## 문제
-{problem_text}
-
-## 피드백
-{feedback}
-
-## 개선 방향
-{improvement_suggestions}
-
-위 피드백을 반영하여 더 나은 해설을 JSON 형식으로 작성하세요.
-"""
+def get_model(model_name: str, temperature: float = 0.3) -> ChatOpenAI:
+    """모델 이름으로 ChatOpenAI 인스턴스 생성"""
+    return ChatOpenAI(model=model_name, temperature=temperature)
 
 
-# Initialize models
-gpt4o = ChatOpenAI(model="gpt-4o", temperature=0.3)
-gpt4o_mini = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+# ═══════════════════════════════════════════════════════════════════════════
+# Node 1: OCR + 라우팅 (통합)
+# ═══════════════════════════════════════════════════════════════════════════
 
-
-async def ocr_node(state: MathExplanationState) -> Dict[str, Any]:
+async def ocr_routing_node(state: MathExplanationState) -> Dict[str, Any]:
     """
-    Node 1: OCR - Extract text from math problem image
+    Node 1: OCR + 라우팅 (통합)
+
+    - 이미지에서 문제 텍스트 추출
+    - 객관식/주관식 판별
+    - 과목/난이도/단원 분류
+    - 모델 선택 (라우팅)
+
+    LCEL 사용: Prompt | Model | Parser
     """
     image_base64 = state["image_base64"]
 
-    message = HumanMessage(
-        content=[
-            {"type": "text", "text": OCR_PROMPT},
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}
-            }
-        ]
-    )
+    # LCEL 체인 구성
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", OCR_ROUTING_SYSTEM_PROMPT),
+        ("human", [
+            {"type": "text", "text": OCR_ROUTING_USER_PROMPT},
+            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,{image}"}}
+        ])
+    ])
 
-    response = await gpt4o.ainvoke([message])
+    model = get_model(OCR_MODEL, OCR_TEMPERATURE)
+    parser = JsonOutputParser()
+
+    chain = prompt | model | parser
 
     try:
-        result = json.loads(response.content)
+        result = await chain.ainvoke({"image": image_base64})
+
+        # 결과 추출
+        subject = result.get("subject", "미적분")
+        difficulty = result.get("difficulty", "보통")
+        unit = result.get("unit", "")
+        question_type = result.get("question_type", "subjective")
+
+        # 과목 유효성 검사
+        if subject not in UNITS:
+            subject = "미적분"
+
+        # 단원 유효성 검사
+        valid_units = UNITS.get(subject, [])
+        if unit not in valid_units and valid_units:
+            unit = valid_units[0]
+
+        # 모델 선택 (라우팅)
+        selected_model = MODEL_ROUTING.get((subject, difficulty), DEFAULT_MODEL)
+
         return {
             "problem_text": result.get("problem_text", ""),
-            "problem_type": result.get("problem_type", "수학"),
+            "question_type": question_type,
+            "subject": subject,
+            "difficulty": difficulty,
+            "unit": unit,
+            "selected_model": selected_model
         }
-    except json.JSONDecodeError:
+
+    except Exception as e:
         return {
-            "problem_text": response.content,
-            "problem_type": "수학",
+            "problem_text": "",
+            "question_type": "subjective",
+            "subject": "미적분",
+            "difficulty": "보통",
+            "unit": "미분법",
+            "selected_model": DEFAULT_MODEL,
+            "error_message": f"OCR 오류: {str(e)}"
         }
 
 
-async def difficulty_classification_node(state: MathExplanationState) -> Dict[str, Any]:
-    """
-    Node 2: Classify problem difficulty for Hard Gate routing
-    """
-    problem_text = state["problem_text"]
+# ═══════════════════════════════════════════════════════════════════════════
+# Node 2: 해설 생성 (3회 병렬 호출)
+# ═══════════════════════════════════════════════════════════════════════════
 
-    prompt = DIFFICULTY_PROMPT.format(problem_text=problem_text)
-    message = HumanMessage(content=prompt)
+def build_explanation_prompt(
+    problem_text: str,
+    subject: str,
+    unit: str,
+    explanation_level: str,
+    question_type: str
+) -> str:
+    """
+    해설 프롬프트 구성
+    - 과목 × 해설수준 프롬프트 선택 (9개 중 1개)
+    - Few-shot 예제 주입 (해당 단원 3개)
+    """
+    # 1. 기본 프롬프트 선택
+    base_prompt = EXPLANATION_PROMPTS.get(
+        (subject, explanation_level),
+        EXPLANATION_PROMPTS.get(("미적분", "중급"), "")
+    )
 
-    response = await gpt4o_mini.ainvoke([message])
+    # 2. Few-shot 예제 가져오기
+    examples = FEW_SHOT_EXAMPLES.get(subject, {}).get(unit, [])
+
+    # 3. 예제 포맷팅
+    examples_text = ""
+    for i, example in enumerate(examples, 1):
+        if example and isinstance(example, dict):
+            examples_text += f"""
+### 예제 {i}
+**문제**: {example.get('problem', '')}
+
+**[1. 문제 리뷰]**
+{example.get('problem_review', '')}
+
+**[2. 조건 해석]**
+{example.get('condition_interpretation', '')}
+
+**[3. 문제 풀이]**
+{example.get('solution', '')}
+---
+"""
+
+    # 4. 답 형식 안내
+    answer_format = "객관식이면 '답: ②', 주관식이면 '답: {숫자}' 형식으로 solution 마지막에 작성하세요."
+
+    # 5. 최종 프롬프트 조합
+    prompt = f"""
+{base_prompt}
+
+## 참고 예제
+{examples_text if examples_text else "(예제 없음)"}
+
+## 풀어야 할 문제
+{problem_text}
+
+## 문제 유형
+{"객관식" if question_type == "objective" else "주관식"}
+
+## 주의사항
+- {answer_format}
+- 수식은 반드시 LaTeX 형식으로 작성하세요.
+
+위 형식에 맞춰 JSON으로 출력하세요.
+"""
+    return prompt
+
+
+async def generate_single_explanation(
+    problem_text: str,
+    subject: str,
+    unit: str,
+    explanation_level: str,
+    question_type: str,
+    selected_model: str
+) -> dict:
+    """단일 해설 생성 (LCEL 사용)"""
+
+    # 프롬프트 구성
+    user_prompt = build_explanation_prompt(
+        problem_text, subject, unit, explanation_level, question_type
+    )
+
+    # LCEL 체인 구성
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", EXPLANATION_SYSTEM_PROMPT),
+        ("human", "{user_prompt}")
+    ])
+
+    model = get_model(selected_model, EXPLANATION_TEMPERATURE)
+    parser = JsonOutputParser()
+
+    chain = prompt | model | parser
 
     try:
-        result = json.loads(response.content)
-        difficulty = result.get("difficulty", "일반")
-        problem_type = result.get("problem_type", state.get("problem_type", "수학"))
-    except json.JSONDecodeError:
-        difficulty = "일반"
-        problem_type = state.get("problem_type", "수학")
+        result = await chain.ainvoke({"user_prompt": user_prompt})
 
-    # Hard Gate: Select model based on difficulty
-    selected_model = DIFFICULTY_THRESHOLDS.get(difficulty, "gpt-4o-mini")
+        # 답 추출
+        solution = result.get("solution", "")
+        extracted_answer = extract_answer(solution)
 
-    return {
-        "difficulty": difficulty,
-        "problem_type": problem_type,
-        "selected_model": selected_model
-    }
+        return {
+            "problem_review": result.get("problem_review", ""),
+            "condition_interpretation": result.get("condition_interpretation", ""),
+            "solution": solution,
+            "extracted_answer": extracted_answer,
+            "raw_response": json.dumps(result, ensure_ascii=False)
+        }
+
+    except Exception as e:
+        return {
+            "problem_review": "",
+            "condition_interpretation": "",
+            "solution": "",
+            "extracted_answer": "",
+            "error": str(e)
+        }
+
+
+def extract_answer(solution: str) -> str:
+    """
+    solution 텍스트에서 답 추출
+    - 객관식: ①②③④⑤ 중 하나
+    - 주관식: 숫자
+    """
+    if not solution:
+        return ""
+
+    # 객관식 패턴: "답: ②" 또는 "답 : ②" 또는 "답:②"
+    objective_pattern = r'답\s*:\s*([①②③④⑤])'
+    match = re.search(objective_pattern, solution)
+    if match:
+        return match.group(1)
+
+    # 주관식 패턴: "답: 17" 또는 "답 : 17" 또는 "답:17"
+    subjective_pattern = r'답\s*:\s*(\d+)'
+    match = re.search(subjective_pattern, solution)
+    if match:
+        return match.group(1)
+
+    return ""
 
 
 async def explanation_generation_node(state: MathExplanationState) -> Dict[str, Any]:
     """
-    Node 3: Generate explanation using selected model
+    Node 2: 해설 생성 (3회 병렬 호출)
+
+    - 같은 프롬프트로 PARALLEL_CALL_COUNT번 병렬 호출
+    - 각 결과에서 답 추출
     """
     problem_text = state["problem_text"]
-    problem_type = state["problem_type"]
+    subject = state["subject"]
+    unit = state["unit"]
+    explanation_level = state["explanation_level"]
+    question_type = state["question_type"]
     selected_model = state["selected_model"]
 
-    # Select model based on Hard Gate decision
-    model = gpt4o if selected_model == "gpt-4o" else gpt4o_mini
-
-    prompt = EXPLANATION_PROMPT.format(
-        problem_text=problem_text,
-        problem_type=problem_type
-    )
-
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=prompt)
+    # N회 병렬 호출
+    tasks = [
+        generate_single_explanation(
+            problem_text, subject, unit, explanation_level, question_type, selected_model
+        )
+        for _ in range(PARALLEL_CALL_COUNT)
     ]
 
-    response = await model.ainvoke(messages)
-
-    try:
-        result = json.loads(response.content)
-        return {
-            "section_review": result.get("section_review", ""),
-            "section_interpret": result.get("section_interpret", ""),
-            "section_solve": result.get("section_solve", ""),
-            "answer": result.get("answer", ""),
-        }
-    except json.JSONDecodeError:
-        # Fallback: parse manually if JSON fails
-        content = response.content
-        return {
-            "section_review": content,
-            "section_interpret": "",
-            "section_solve": "",
-            "answer": "",
-        }
-
-
-async def quality_evaluation_node(state: MathExplanationState) -> Dict[str, Any]:
-    """
-    Node 4: Soft Quality Gate - Evaluate explanation quality
-    """
-    problem_text = state["problem_text"]
-
-    explanation = f"""
-## 문제 리뷰
-{state["section_review"]}
-
-## 조건 해석
-{state["section_interpret"]}
-
-## 문제 풀이
-{state["section_solve"]}
-
-## 정답
-{state["answer"]}
-"""
-
-    prompt = QUALITY_EVALUATION_PROMPT.format(
-        problem_text=problem_text,
-        explanation=explanation
-    )
-
-    message = HumanMessage(content=prompt)
-    response = await gpt4o_mini.ainvoke([message])
-
-    try:
-        result = json.loads(response.content)
-        total_score = result.get("total_score", 0) / 100  # Normalize to 0-1
-        feedback = result.get("feedback", "")
-        passes = result.get("pass", total_score >= QUALITY_THRESHOLD)
-    except json.JSONDecodeError:
-        total_score = 0.8  # Default pass
-        feedback = ""
-        passes = True
+    candidates = await asyncio.gather(*tasks)
 
     return {
-        "quality_score": total_score,
-        "quality_feedback": feedback,
-        "is_complete": passes or state.get("retry_count", 0) >= MAX_RETRIES
+        "explanation_candidates": list(candidates)
     }
 
 
-async def regeneration_node(state: MathExplanationState) -> Dict[str, Any]:
-    """
-    Node 5: Regenerate explanation based on quality feedback
-    """
-    problem_text = state["problem_text"]
-    feedback = state["quality_feedback"]
-    retry_count = state.get("retry_count", 0)
+# ═══════════════════════════════════════════════════════════════════════════
+# Node 3: Hard Gate (검증 & 선택)
+# ═══════════════════════════════════════════════════════════════════════════
 
-    prompt = REGENERATION_PROMPT.format(
-        problem_text=problem_text,
-        feedback=feedback,
-        improvement_suggestions=f"품질 점수: {state['quality_score']:.0%}"
+def validate_json_structure(candidate: dict) -> bool:
+    """JSON 구조 검증 - 필수 필드 존재 여부"""
+    required_keys = ["problem_review", "condition_interpretation", "solution"]
+    return all(
+        key in candidate and
+        isinstance(candidate.get(key), str) and
+        len(candidate.get(key, "")) > 0
+        for key in required_keys
     )
 
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=prompt)
+
+def validate_answer_format(extracted_answer: str, question_type: str) -> bool:
+    """
+    답 출력 형식 검증
+    OCR에서 판단한 question_type과 추출된 답 형식이 일치하는지 확인
+    """
+    if not extracted_answer:
+        return False
+
+    if question_type == "objective":
+        # OCR이 객관식이라고 판단 → 답이 ①②③④⑤ 중 하나여야 통과
+        return extracted_answer in ["①", "②", "③", "④", "⑤"]
+    else:
+        # OCR이 주관식이라고 판단 → 답이 숫자여야 통과
+        return extracted_answer.isdigit()
+
+
+def validate_latex(candidate: dict) -> bool:
+    """
+    LaTeX 문법 검증
+    기본적인 LaTeX 패턴이 올바른지 확인
+    """
+    full_text = (
+        candidate.get("problem_review", "") +
+        candidate.get("condition_interpretation", "") +
+        candidate.get("solution", "")
+    )
+
+    # $...$ 패턴 추출
+    latex_patterns = re.findall(r'\$[^$]+\$', full_text)
+
+    # 기본적인 검증: 열고 닫는 괄호 매칭
+    for pattern in latex_patterns:
+        content = pattern[1:-1]  # $ 제거
+
+        # 괄호 매칭 검사
+        brackets = {'(': ')', '[': ']', '{': '}'}
+        stack = []
+        for char in content:
+            if char in brackets:
+                stack.append(char)
+            elif char in brackets.values():
+                if not stack:
+                    return False
+                expected = brackets[stack.pop()]
+                if char != expected:
+                    return False
+
+        if stack:  # 닫히지 않은 괄호가 있음
+            return False
+
+    return True
+
+
+async def hard_gate_node(state: MathExplanationState) -> Dict[str, Any]:
+    """
+    Node 3: Hard Gate (검증 & 선택)
+
+    STEP 1: 정답 다수결 → 2개 이상 일치하는 답 선택
+    STEP 2-4: 다수결 후보 내에서만 검증 진행
+       - JSON 형식 검증
+       - 답 출력 형식 검증 (question_type과 일치)
+       - LaTeX 문법 검증
+    STEP 5: 최종 선택 (검증 통과 후보 중 랜덤)
+    """
+    candidates = state["explanation_candidates"]
+    question_type = state["question_type"]
+
+    # 에러 처리: 후보가 없는 경우
+    if not candidates:
+        return _build_error_output("해설 후보가 없습니다.")
+
+    # ─────────────────────────────────────────────────────────────────
+    # STEP 1: 정답 다수결
+    # ─────────────────────────────────────────────────────────────────
+    answers = [c.get("extracted_answer", "") for c in candidates]
+    answers = [a for a in answers if a]  # 빈 문자열 제거
+
+    if not answers:
+        # 답이 하나도 추출 안 됨 → 첫 번째 후보 선택
+        selected = candidates[0]
+        return _build_final_output(selected, "", [], [])
+
+    answer_counts = Counter(answers)
+    majority_answer, count = answer_counts.most_common(1)[0]
+
+    # 다수결 답과 일치하는 후보들만 필터링
+    majority_candidates = [
+        c for c in candidates
+        if c.get("extracted_answer") == majority_answer
     ]
 
-    # Use GPT-4o for regeneration (higher quality)
-    response = await gpt4o.ainvoke(messages)
+    # ─────────────────────────────────────────────────────────────────
+    # STEP 2-4: 다수결 후보 내에서만 검증 진행
+    # ─────────────────────────────────────────────────────────────────
+    validation_results = []
+    valid_candidates = []
 
-    try:
-        result = json.loads(response.content)
-        return {
-            "section_review": result.get("section_review", ""),
-            "section_interpret": result.get("section_interpret", ""),
-            "section_solve": result.get("section_solve", ""),
-            "answer": result.get("answer", ""),
-            "retry_count": retry_count + 1
+    for i, candidate in enumerate(majority_candidates):
+        is_valid_json = validate_json_structure(candidate)
+        is_valid_answer = validate_answer_format(
+            candidate.get("extracted_answer", ""),
+            question_type
+        )
+        is_valid_latex_result = validate_latex(candidate)
+
+        validation_result = {
+            "candidate_index": i,
+            "is_valid_json": is_valid_json,
+            "is_valid_answer_format": is_valid_answer,
+            "is_valid_latex": is_valid_latex_result
         }
-    except json.JSONDecodeError:
-        return {
-            "retry_count": retry_count + 1
-        }
+        validation_results.append(validation_result)
+
+        # 모든 검증 통과
+        if is_valid_json and is_valid_answer and is_valid_latex_result:
+            valid_candidates.append(candidate)
+
+    # ─────────────────────────────────────────────────────────────────
+    # STEP 5: 최종 선택
+    # ─────────────────────────────────────────────────────────────────
+    if valid_candidates:
+        # 검증 통과한 후보 중 랜덤 선택
+        selected = random.choice(valid_candidates)
+    elif majority_candidates:
+        # 검증 통과한 후보가 없으면 다수결 후보 중 첫 번째
+        selected = majority_candidates[0]
+    else:
+        # 다수결 후보도 없으면 원본 첫 번째
+        selected = candidates[0]
+
+    return _build_final_output(
+        selected,
+        majority_answer,
+        majority_candidates,
+        validation_results
+    )
 
 
-def should_regenerate(state: MathExplanationState) -> str:
-    """
-    Conditional edge: Check if regeneration is needed
-    """
-    quality_score = state.get("quality_score", 1.0)
-    retry_count = state.get("retry_count", 0)
+def _build_final_output(
+    selected: dict,
+    majority_answer: str,
+    majority_candidates: List[dict],
+    validation_results: List[dict]
+) -> Dict[str, Any]:
+    """최종 출력 구성"""
+    return {
+        "majority_answer": majority_answer,
+        "majority_candidates": majority_candidates,
+        "validation_results": validation_results,
+        "selected_explanation": selected,
+        "problem_review": selected.get("problem_review", ""),
+        "condition_interpretation": selected.get("condition_interpretation", ""),
+        "solution": selected.get("solution", ""),
+        "answer": selected.get("extracted_answer", ""),
+        "is_complete": True
+    }
 
-    if quality_score < QUALITY_THRESHOLD and retry_count < MAX_RETRIES:
-        return "regenerate"
-    return "complete"
+
+def _build_error_output(error_message: str) -> Dict[str, Any]:
+    """에러 출력 구성"""
+    return {
+        "majority_answer": "",
+        "majority_candidates": [],
+        "validation_results": [],
+        "selected_explanation": {},
+        "problem_review": "",
+        "condition_interpretation": "",
+        "solution": "",
+        "answer": "",
+        "is_complete": False,
+        "error_message": error_message
+    }

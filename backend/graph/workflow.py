@@ -1,65 +1,53 @@
 """
 LangGraph Workflow for Math Explanation Generation
 
-Workflow:
-┌─────────┐   ┌──────────────┐   ┌────────────┐   ┌──────────────┐
-│   OCR   │ → │  Difficulty  │ → │ Explanation│ → │   Quality    │
-│         │   │Classification│   │ Generation │   │  Evaluation  │
-└─────────┘   └──────────────┘   └────────────┘   └──────────────┘
-                                        ↑               │
-                                        │    ┌──────────┴──────────┐
-                                        │    ↓                     ↓
-                                  ┌───────────┐            ┌───────────┐
-                                  │Regenerate │            │  Complete │
-                                  └───────────┘            └───────────┘
+Architecture (3 Nodes):
+┌─────────────────┐   ┌─────────────────────┐   ┌─────────────────┐
+│  OCR + Routing  │ → │ Explanation Gen (3x)│ → │    Hard Gate    │
+│    (Node 1)     │   │      (Node 2)       │   │    (Node 3)     │
+└─────────────────┘   └─────────────────────┘   └─────────────────┘
+        │                      │                        │
+        ▼                      ▼                        ▼
+   - OCR 텍스트 추출      - 3회 병렬 호출          - 정답 다수결
+   - 객관식/주관식       - Few-shot 적용          - JSON 검증
+   - 과목/난이도/단원    - 해설 생성              - 답 형식 검증
+   - 모델 라우팅                                  - LaTeX 검증
+                                                  - 최종 선택
 """
 from langgraph.graph import StateGraph, END
 
-from .state import MathExplanationState
+from .state import MathExplanationState, create_initial_state
 from .nodes import (
-    ocr_node,
-    difficulty_classification_node,
+    ocr_routing_node,
     explanation_generation_node,
-    quality_evaluation_node,
-    regeneration_node,
-    should_regenerate
+    hard_gate_node
 )
 
 
 def create_explanation_graph() -> StateGraph:
     """
     Create the LangGraph workflow for math explanation generation.
+
+    Flow:
+    1. OCR + Routing (통합)
+    2. Explanation Generation (3회 병렬 호출)
+    3. Hard Gate (검증 & 선택)
     """
     # Initialize graph with state schema
     workflow = StateGraph(MathExplanationState)
 
-    # Add nodes
-    workflow.add_node("ocr", ocr_node)
-    workflow.add_node("classify_difficulty", difficulty_classification_node)
+    # Add nodes (3개)
+    workflow.add_node("ocr_routing", ocr_routing_node)
     workflow.add_node("generate_explanation", explanation_generation_node)
-    workflow.add_node("evaluate_quality", quality_evaluation_node)
-    workflow.add_node("regenerate", regeneration_node)
+    workflow.add_node("hard_gate", hard_gate_node)
 
     # Set entry point
-    workflow.set_entry_point("ocr")
+    workflow.set_entry_point("ocr_routing")
 
-    # Add edges (linear flow)
-    workflow.add_edge("ocr", "classify_difficulty")
-    workflow.add_edge("classify_difficulty", "generate_explanation")
-    workflow.add_edge("generate_explanation", "evaluate_quality")
-
-    # Add conditional edge for quality gate
-    workflow.add_conditional_edges(
-        "evaluate_quality",
-        should_regenerate,
-        {
-            "regenerate": "regenerate",
-            "complete": END
-        }
-    )
-
-    # Regeneration loops back to quality evaluation
-    workflow.add_edge("regenerate", "evaluate_quality")
+    # Add edges (선형 흐름)
+    workflow.add_edge("ocr_routing", "generate_explanation")
+    workflow.add_edge("generate_explanation", "hard_gate")
+    workflow.add_edge("hard_gate", END)
 
     return workflow.compile()
 
@@ -68,36 +56,24 @@ def create_explanation_graph() -> StateGraph:
 explanation_graph = create_explanation_graph()
 
 
-async def run_explanation_workflow(image_base64: str) -> MathExplanationState:
+async def run_explanation_workflow(
+    image_base64: str,
+    explanation_level: str = "중급"
+) -> MathExplanationState:
     """
     Run the complete explanation workflow.
 
     Args:
         image_base64: Base64 encoded image of math problem
+        explanation_level: 초급/중급/고급 (default: 중급)
 
     Returns:
         Final state with generated explanation
     """
-    initial_state: MathExplanationState = {
-        "image_base64": image_base64,
-        "problem_text": "",
-        "problem_type": "",
-        "difficulty": "일반",
-        "selected_model": "gpt-4o-mini",
-        "section_review": "",
-        "section_interpret": "",
-        "section_solve": "",
-        "answer": "",
-        "quality_score": 0.0,
-        "quality_feedback": "",
-        "retry_count": 0,
-        "max_retries": 2,
-        "current_section": "review",
-        "stream_content": "",
-        "is_formula": False,
-        "is_complete": False,
-        "error_message": None
-    }
+    initial_state = create_initial_state(
+        image_base64=image_base64,
+        explanation_level=explanation_level
+    )
 
     # Run the graph
     final_state = await explanation_graph.ainvoke(initial_state)
@@ -105,76 +81,67 @@ async def run_explanation_workflow(image_base64: str) -> MathExplanationState:
     return final_state
 
 
-async def stream_explanation_workflow(image_base64: str):
+async def stream_explanation_workflow(
+    image_base64: str,
+    explanation_level: str = "중급"
+):
     """
     Stream the explanation workflow with intermediate results.
 
     Yields:
-        Dict with section updates as they are generated
+        Dict with node updates as they are generated
     """
-    initial_state: MathExplanationState = {
-        "image_base64": image_base64,
-        "problem_text": "",
-        "problem_type": "",
-        "difficulty": "일반",
-        "selected_model": "gpt-4o-mini",
-        "section_review": "",
-        "section_interpret": "",
-        "section_solve": "",
-        "answer": "",
-        "quality_score": 0.0,
-        "quality_feedback": "",
-        "retry_count": 0,
-        "max_retries": 2,
-        "current_section": "review",
-        "stream_content": "",
-        "is_formula": False,
-        "is_complete": False,
-        "error_message": None
-    }
+    initial_state = create_initial_state(
+        image_base64=image_base64,
+        explanation_level=explanation_level
+    )
 
     # Stream through graph nodes
     async for event in explanation_graph.astream(initial_state):
-        # Extract node name and output
         for node_name, node_output in event.items():
-            if node_name == "generate_explanation":
-                # Yield each section as it's generated
-                if node_output.get("section_review"):
-                    yield {
-                        "section": "review",
-                        "title": "문제 리뷰",
-                        "content": node_output["section_review"],
-                        "is_complete": False
-                    }
 
-                if node_output.get("section_interpret"):
-                    yield {
-                        "section": "interpret",
-                        "title": "조건 해석",
-                        "content": node_output["section_interpret"],
-                        "is_complete": False
+            if node_name == "ocr_routing":
+                yield {
+                    "node": "ocr_routing",
+                    "status": "완료",
+                    "data": {
+                        "problem_text": node_output.get("problem_text", "")[:200] + "..." if len(node_output.get("problem_text", "")) > 200 else node_output.get("problem_text", ""),
+                        "subject": node_output.get("subject", ""),
+                        "difficulty": node_output.get("difficulty", ""),
+                        "unit": node_output.get("unit", ""),
+                        "question_type": node_output.get("question_type", ""),
+                        "selected_model": node_output.get("selected_model", "")
                     }
+                }
 
-                if node_output.get("section_solve"):
-                    yield {
-                        "section": "solve",
-                        "title": "문제 풀이",
-                        "content": node_output["section_solve"],
-                        "is_complete": False
+            elif node_name == "generate_explanation":
+                candidates = node_output.get("explanation_candidates", [])
+                yield {
+                    "node": "generate_explanation",
+                    "status": "완료",
+                    "data": {
+                        "candidates_count": len(candidates),
+                        "answers": [c.get("extracted_answer", "") for c in candidates]
                     }
+                }
 
-                if node_output.get("answer"):
-                    yield {
-                        "section": "answer",
-                        "title": "정답",
-                        "content": node_output["answer"],
-                        "is_complete": False
+            elif node_name == "hard_gate":
+                yield {
+                    "node": "hard_gate",
+                    "status": "완료",
+                    "data": {
+                        "majority_answer": node_output.get("majority_answer", ""),
+                        "problem_review": node_output.get("problem_review", ""),
+                        "condition_interpretation": node_output.get("condition_interpretation", ""),
+                        "solution": node_output.get("solution", ""),
+                        "answer": node_output.get("answer", ""),
+                        "validation_results": node_output.get("validation_results", [])
                     }
+                }
 
             elif node_name == "__end__":
                 yield {
-                    "section": "complete",
-                    "title": "",
-                    "content": "",
+                    "node": "complete",
+                    "status": "완료",
                     "is_complete": True
                 }

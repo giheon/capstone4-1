@@ -2,6 +2,22 @@
 
 LangGraph 기반 수능 수학 문제 AI 해설 서비스
 
+## 시스템 아키텍처 (3노드)
+
+```
+┌─────────────────┐   ┌─────────────────────┐   ┌─────────────────┐
+│  OCR + Routing  │ → │ Explanation Gen (3x)│ → │    Hard Gate    │
+│    (Node 1)     │   │      (Node 2)       │   │    (Node 3)     │
+└─────────────────┘   └─────────────────────┘   └─────────────────┘
+        │                      │                        │
+        ▼                      ▼                        ▼
+   - OCR 텍스트 추출      - 3회 병렬 호출          - 정답 다수결
+   - 객관식/주관식       - Few-shot 적용          - JSON 검증
+   - 과목/난이도/단원    - 해설 생성              - 답 형식 검증
+   - 모델 라우팅                                  - LaTeX 검증
+                                                  - 최종 선택
+```
+
 ## 프로젝트 구조
 
 ```
@@ -11,52 +27,88 @@ capstone/
 │       ├── java/com/example/math/
 │       │   ├── MainActivity.kt
 │       │   ├── navigation/
-│       │   │   └── NavGraph.kt
 │       │   └── ui/
 │       │       ├── components/
 │       │       │   └── LatexView.kt      # KaTeX 렌더링
-│       │       ├── screens/
-│       │       │   ├── home/
-│       │       │   ├── camera/
-│       │       │   └── explanation/      # AI 해설 화면
-│       │       └── theme/
+│       │       └── screens/
+│       │           ├── home/
+│       │           ├── camera/
+│       │           └── explanation/      # AI 해설 화면
 │       └── assets/
 │           └── katex.html                # LaTeX 렌더링 템플릿
 │
 └── backend/                      # Python Backend (LangGraph + FastAPI)
     ├── main.py                   # FastAPI 서버
+    ├── config.py                 # 중앙 집중식 설정 (모델, 프롬프트, 예제)
     ├── requirements.txt
-    ├── graph/
-    │   ├── state.py              # LangGraph State 스키마
-    │   ├── nodes.py              # OCR, 해설생성, 품질평가 노드
-    │   └── workflow.py           # 워크플로우 정의
-    ├── prompts/
-    │   └── explanation.py        # 프롬프트 템플릿
-    └── evaluators/
-        └── quality.py            # LangSmith 품질 평가
+    └── graph/
+        ├── __init__.py
+        ├── state.py              # LangGraph State 스키마
+        ├── nodes.py              # 3개 노드 (OCR, Gen, HardGate)
+        └── workflow.py           # 워크플로우 정의
 ```
 
 ## 기능
 
 ### Android App
 - 수학 문제 촬영 (CameraX)
+- 해설 수준 선택 (초급/중급/고급)
 - 실시간 스트리밍 해설 표시
 - LaTeX 수식 렌더링 (KaTeX)
 - 3단계 해설 구조: 문제 리뷰 → 조건 해석 → 문제 풀이
 
 ### Backend (LangGraph)
-- **OCR**: GPT-4o Vision으로 문제 텍스트 추출
-- **Hard Gate**: 난이도 기반 모델 라우팅 (킬러→GPT-4o, 일반→GPT-4o-mini)
-- **해설 생성**: 재현 가능한 사고 과정 제공
-- **Soft Quality Gate**: LangSmith 기반 품질 평가 (75점 미만 시 재생성)
+
+#### Node 1: OCR + 라우팅
+- GPT-4o Vision으로 문제 텍스트 추출
+- 객관식/주관식 판별
+- 과목 분류: 미적분, 확률과통계, 기하
+- 난이도 분류: 쉬움, 보통, 어려움, 킬러
+- 단원 분류 (과목별 10개 단원)
+- 모델 라우팅 (과목×난이도 → 모델)
+
+#### Node 2: 해설 생성 (3회 병렬)
+- 9개 프롬프트 (과목 3 × 해설수준 3)
+- Few-shot 예제 주입 (단원별 3개)
+- 동일 프롬프트로 3회 병렬 호출
+- LaTeX 수식 사용
+
+#### Node 3: Hard Gate (코드 레벨)
+- 정답 다수결 (2개 이상 일치)
+- JSON 구조 검증
+- 답 형식 검증 (question_type 일치)
+- LaTeX 문법 검증
+- 최종 후보 선택 (랜덤)
+
+## 설정 (config.py)
+
+모든 설정을 한 곳에서 관리:
+
+```python
+# 모델 라우팅 (과목 × 난이도 → 모델)
+MODEL_ROUTING = {
+    ("미적분", "킬러"): "gpt-4o",
+    ("미적분", "보통"): "gpt-4o-mini",
+    # ...
+}
+
+# 해설 프롬프트 (과목 × 해설수준)
+EXPLANATION_PROMPTS = {
+    ("미적분", "초급"): "...",
+    ("미적분", "중급"): "...",
+    # ...
+}
+
+# Few-shot 예제 (과목 × 단원)
+FEW_SHOT_EXAMPLES = {
+    "미적분": {
+        "미분법": [{...}, {...}, {...}],
+        # ...
+    }
+}
+```
 
 ## 실행 방법
-
-### Android App
-```bash
-# Android Studio에서 프로젝트 열기
-# Run 'app' 실행
-```
 
 ### Backend
 ```bash
@@ -66,11 +118,17 @@ cd backend
 cp .env.example .env
 # .env 파일에 OPENAI_API_KEY 입력
 
-# 실행
-./run.sh
-# 또는
+# 의존성 설치
 pip install -r requirements.txt
+
+# 실행
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+### Android App
+```bash
+# Android Studio에서 프로젝트 열기
+# Run 'app' 실행
 ```
 
 ## API 엔드포인트
@@ -81,6 +139,39 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000
 | POST | `/explain` | 전체 해설 생성 |
 | POST | `/explain/stream` | SSE 스트리밍 |
 | POST | `/explain/upload` | 이미지 업로드 + 스트리밍 |
+| GET | `/meta/subjects` | 과목 목록 |
+| GET | `/meta/units/{subject}` | 단원 목록 |
+| GET | `/meta/levels` | 해설 수준 목록 |
+| GET | `/meta/config` | 현재 설정 조회 |
+| GET | `/meta/routing` | 모델 라우팅 조회 |
+
+## 요청/응답 형식
+
+### 요청
+```json
+{
+    "image_base64": "...",
+    "explanation_level": "중급"
+}
+```
+
+### 응답
+```json
+{
+    "problem_text": "함수 f(x) = ...",
+    "question_type": "subjective",
+    "subject": "미적분",
+    "difficulty": "보통",
+    "unit": "미분법",
+    "selected_model": "gpt-4o-mini",
+    "problem_review": "[1. 문제 리뷰] 내용",
+    "condition_interpretation": "[2. 조건 해석] 내용",
+    "solution": "[3. 문제 풀이] 내용... 답: 2",
+    "answer": "2",
+    "majority_answer": "2",
+    "is_complete": true
+}
+```
 
 ## 기술 스택
 
@@ -96,16 +187,16 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000
 - LangGraph / LangChain
 - FastAPI
 - OpenAI GPT-4o / GPT-4o-mini
-- LangSmith (평가)
+- LCEL (LangChain Expression Language)
 
-## 품질 평가 기준
+## 검증 기준 (Hard Gate)
 
-| 기준 | 가중치 | 설명 |
-|------|--------|------|
-| 조건 사용 완전성 | 25% | 문제의 모든 조건 활용 |
-| 논리 전개 명확성 | 25% | STEP 간 자연스러운 연결 |
-| 재현 가능성 | 30% | 학생이 따라할 수 있는 풀이 |
-| 수식 표현 정확성 | 20% | LaTeX 문법 정확성 |
+| 검증 | 방법 |
+|------|------|
+| 정답 다수결 | 3개 후보 중 2개 이상 일치 |
+| JSON 구조 | 필수 필드 존재 여부 |
+| 답 형식 | question_type과 추출된 답 일치 |
+| LaTeX 문법 | 괄호 매칭 검사 |
 
 ## 라이선스
 

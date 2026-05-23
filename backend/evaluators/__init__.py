@@ -1,16 +1,8 @@
 """
-LangSmith evaluators for quality assessment.
-"""
-from .quality import (
-    MathExplanationEvaluator,
-    default_evaluator,
-    create_condition_usage_evaluator,
-    create_latex_accuracy_evaluator
-)
+Evaluators module (deprecated for online use)
 
-__all__ = [
-    "MathExplanationEvaluator",
-    "default_evaluator",
-    "create_condition_usage_evaluator",
-    "create_latex_accuracy_evaluator"
-]
+Note: 온라인 검증은 graph/nodes.py의 hard_gate_node에서 수행됩니다.
+이 모듈은 LangSmith 오프라인 평가용으로만 사용됩니다.
+"""
+
+__all__ = []

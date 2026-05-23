@@ -1,5 +1,10 @@
 """
 LangGraph State Schema for Math Explanation Generation
+
+Updated Architecture (3 Nodes):
+1. Node 1: OCR + Routing (통합)
+2. Node 2: Explanation Generation (3회 병렬 호출)
+3. Node 3: Hard Gate (검증 & 선택)
 """
 from typing import TypedDict, Literal, Optional, List
 from dataclasses import dataclass
@@ -7,96 +12,144 @@ from dataclasses import dataclass
 
 class MathExplanationState(TypedDict):
     """
-    State schema for the math explanation workflow.
+    LangGraph State Schema
 
-    Flow:
-    1. image_base64 -> OCR -> problem_text
-    2. problem_text -> difficulty classification -> model selection
-    3. model -> explanation generation -> sections
-    4. sections -> quality evaluation -> final output or retry
+    LangSmith input/output 형식과 호환되도록 설계
     """
 
-    # === Input ===
-    image_base64: str
+    # ═══════════════════════════════════════════════════════════════
+    # 입력 (사용자 제공)
+    # ═══════════════════════════════════════════════════════════════
+    image_base64: str                                    # 문제 이미지
+    explanation_level: Literal["초급", "중급", "고급"]    # 사용자가 선택
 
-    # === OCR Results ===
-    problem_text: str
-    problem_type: str  # 미적분, 확률과통계, 기하, 수학1, 수학2
-    difficulty: Literal["일반", "준킬러", "킬러"]
+    # ═══════════════════════════════════════════════════════════════
+    # Node 1: OCR + 라우팅 결과
+    # ═══════════════════════════════════════════════════════════════
+    problem_text: str                                    # 추출된 문제 텍스트
+    question_type: Literal["objective", "subjective"]    # 문제 유형 (OCR 판단)
+    subject: Literal["확률과통계", "미적분", "기하"]      # 과목
+    difficulty: Literal["쉬움", "보통", "어려움", "킬러"]  # 난이도
+    unit: str                                            # 단원
+    selected_model: str                                  # 라우팅된 모델명
 
-    # === Model Selection (Hard Gate) ===
-    selected_model: Literal["gpt-4o", "gpt-4o-mini"]
+    # ═══════════════════════════════════════════════════════════════
+    # Node 2: 해설 생성 결과 (3개 후보)
+    # ═══════════════════════════════════════════════════════════════
+    explanation_candidates: List[dict]
+    # 각 후보 형식:
+    # {
+    #     "problem_review": "...",
+    #     "condition_interpretation": "...",
+    #     "solution": "...",
+    #     "extracted_answer": "②" 또는 "17"
+    # }
 
-    # === Explanation Sections ===
-    # 문제 리뷰: 문제 상황 요약 및 구하고자 하는 것
-    section_review: str
+    # ═══════════════════════════════════════════════════════════════
+    # Node 3: Hard Gate 결과
+    # ═══════════════════════════════════════════════════════════════
+    majority_answer: str                # 다수결로 선정된 답
+    majority_candidates: List[dict]     # 다수결 답과 일치하는 후보들
+    validation_results: List[dict]      # 검증 결과
+    # {
+    #     "candidate_index": 0,
+    #     "is_valid_json": True/False,
+    #     "is_valid_answer_format": True/False,
+    #     "is_valid_latex": True/False
+    # }
+    selected_explanation: dict          # 최종 선택된 해설
 
-    # 조건 해석: 각 조건의 수학적 의미와 연결고리
-    section_interpret: str
+    # ═══════════════════════════════════════════════════════════════
+    # 최종 출력 (LangSmith output 형식과 동일)
+    # ═══════════════════════════════════════════════════════════════
+    problem_review: str                 # [1. 문제 리뷰]
+    condition_interpretation: str       # [2. 조건 해석]
+    solution: str                       # [3. 문제 풀이]
+    answer: str                         # 최종 답
 
-    # 문제 풀이: STEP별 논리적 전개
-    section_solve: str
-
-    # 정답
-    answer: str
-
-    # === Quality Evaluation (Soft Gate) ===
-    quality_score: float
-    quality_feedback: str
-    retry_count: int
-    max_retries: int
-
-    # === Streaming ===
-    current_section: Literal["review", "interpret", "solve", "answer"]
-    stream_content: str
-    is_formula: bool
-
-    # === Final Output ===
+    # ═══════════════════════════════════════════════════════════════
+    # 메타 정보
+    # ═══════════════════════════════════════════════════════════════
     is_complete: bool
     error_message: Optional[str]
 
 
 @dataclass
-class QualityRubric:
-    """
-    Quality evaluation rubric based on presentation criteria.
-    Total score: 100 points
-    """
+class ExplanationCandidate:
+    """해설 후보 데이터 클래스"""
+    problem_review: str
+    condition_interpretation: str
+    solution: str
+    extracted_answer: str
+    raw_response: Optional[str] = None
+    error: Optional[str] = None
 
-    # 조건 사용 완전성: 문제에 주어진 모든 조건을 빠짐없이 활용했는가
-    condition_usage: float = 0.0  # 25점
+    def to_dict(self) -> dict:
+        return {
+            "problem_review": self.problem_review,
+            "condition_interpretation": self.condition_interpretation,
+            "solution": self.solution,
+            "extracted_answer": self.extracted_answer,
+            "raw_response": self.raw_response,
+            "error": self.error
+        }
 
-    # 논리 전개 명확성: 각 STEP 간 논리적 연결이 명확한가
-    logical_flow: float = 0.0  # 25점
 
-    # 재현 가능성: 학생이 이 해설만 보고 유사문제를 풀 수 있는가
-    reproducibility: float = 0.0  # 30점
-
-    # 수식 표현 정확성: LaTeX 형식으로 정확하게 작성되었는가
-    latex_accuracy: float = 0.0  # 20점
+@dataclass
+class ValidationResult:
+    """검증 결과 데이터 클래스"""
+    candidate_index: int
+    is_valid_json: bool
+    is_valid_answer_format: bool
+    is_valid_latex: bool
 
     @property
-    def total_score(self) -> float:
-        return (
-            self.condition_usage * 0.25 +
-            self.logical_flow * 0.25 +
-            self.reproducibility * 0.30 +
-            self.latex_accuracy * 0.20
-        )
+    def is_all_valid(self) -> bool:
+        return self.is_valid_json and self.is_valid_answer_format and self.is_valid_latex
 
-    @property
-    def passes_threshold(self) -> bool:
-        """75점 이상이면 통과"""
-        return self.total_score >= 0.75
+    def to_dict(self) -> dict:
+        return {
+            "candidate_index": self.candidate_index,
+            "is_valid_json": self.is_valid_json,
+            "is_valid_answer_format": self.is_valid_answer_format,
+            "is_valid_latex": self.is_valid_latex
+        }
 
 
-# Difficulty thresholds for Hard Gate routing
-DIFFICULTY_THRESHOLDS = {
-    "킬러": "gpt-4o",      # 킬러 문제는 GPT-4o 사용
-    "준킬러": "gpt-4o",    # 준킬러도 GPT-4o 사용
-    "일반": "gpt-4o-mini"  # 일반 문제는 비용 절감
-}
+def create_initial_state(
+    image_base64: str,
+    explanation_level: str = "중급"
+) -> MathExplanationState:
+    """초기 state 생성 헬퍼 함수"""
+    return MathExplanationState(
+        # 입력
+        image_base64=image_base64,
+        explanation_level=explanation_level,
 
-# Quality threshold for Soft Gate
-QUALITY_THRESHOLD = 0.75  # 75점 미만 시 재생성
-MAX_RETRIES = 2  # 최대 재생성 횟수
+        # OCR + 라우팅 결과 (초기화)
+        problem_text="",
+        question_type="subjective",
+        subject="미적분",
+        difficulty="보통",
+        unit="",
+        selected_model="",
+
+        # 해설 생성 결과 (초기화)
+        explanation_candidates=[],
+
+        # Hard Gate 결과 (초기화)
+        majority_answer="",
+        majority_candidates=[],
+        validation_results=[],
+        selected_explanation={},
+
+        # 최종 출력 (초기화)
+        problem_review="",
+        condition_interpretation="",
+        solution="",
+        answer="",
+
+        # 메타 정보
+        is_complete=False,
+        error_message=None
+    )

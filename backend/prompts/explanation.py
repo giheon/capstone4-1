@@ -1,179 +1,159 @@
 """
 Prompt templates for math explanation generation.
-Based on 100-point example criteria from presentation.
+
+New Architecture:
+- 9 prompts (3 subjects × 3 levels)
+- LaTeX 미사용
+- JSON 출력 형식
+
+Note: Main prompts are defined in graph/state.py (EXPLANATION_PROMPTS)
+This module contains helper prompts and constants.
 """
 
-# System prompt for explanation generation
-SYSTEM_PROMPT = """당신은 수능 수학 전문 튜터입니다.
-학생이 스스로 문제를 풀 수 있도록 '재현 가능한 사고 과정'을 제시하는 것이 목표입니다.
+# OCR + Routing 통합 프롬프트
+OCR_ROUTING_PROMPT = """이미지에서 수학 문제를 분석하세요.
 
-## 핵심 원칙
-1. 모든 조건을 빠짐없이 활용할 것
-2. 각 단계에서 "왜 이 방법을 선택했는가"를 명시할 것
-3. 수식은 LaTeX 형식으로 작성할 것 (예: $\\frac{1}{2}$, $\\sin\\theta$)
-4. 결론 연결 시 "∴" 기호를 사용할 것
+## 작업
+1. 문제 텍스트를 정확하게 추출
+2. 문제 유형 판별 (객관식/주관식)
+3. 과목 분류
+4. 난이도 분류
+5. 단원 분류
 
-## 출력 형식
-반드시 아래 JSON 형식으로 출력하세요:
+## 과목별 단원
+- 확률과통계: 경우의 수, 확률, 확률분포, 통계적 추정
+- 미적분: 수열, 미분법, 적분법
+- 기하: 이차곡선, 평면벡터, 공간도형과 공간좌표
 
+## 출력 (JSON)
 {
-    "section_review": "문제 리뷰 내용",
-    "section_interpret": "조건 해석 내용",
-    "section_solve": "문제 풀이 내용 (STEP 포함)",
-    "answer": "최종 정답"
-}"""
+    "problem_text": "문제 전체 내용",
+    "question_type": "objective 또는 subjective",
+    "subject": "확률과통계/미적분/기하 중 하나",
+    "difficulty": "쉬움/보통/어려움/킬러 중 하나",
+    "unit": "해당 과목의 단원명"
+}
 
-
-# Main explanation prompt
-EXPLANATION_PROMPT = """
-## 문제
-{problem_text}
-
-## 문제 유형
-{problem_type}
-
-## 해설 작성 지침
-
-### 1. 문제 리뷰
-- 문제 상황을 간결하게 요약
-- 구하고자 하는 것을 명확히 명시
-- "주어진 조건"과 "구해야 할 것"을 구분
-
-### 2. 조건 해석
-- 각 조건의 수학적 의미를 분석
-- 조건들 간의 연결고리를 파악
-- 핵심 조건과 보조 조건을 구분
-- 어떤 개념/공식이 필요한지 언급
-
-### 3. 문제 풀이
-- STEP 단위로 논리적 전개
-- 각 STEP에서 사용한 조건과 이유 명시
-- 중간 결론은 "∴"로 연결
-- 최종 답 도출 과정 명확히
-
-### 4. 정답
-- 최종 답만 간결하게
-
-## 수식 표기 규칙
-- 분수: $\\frac{{a}}{{b}}$
-- 적분: $\\int_{{a}}^{{b}} f(x) dx$
-- 극한: $\\lim_{{x \\to a}} f(x)$
-- 삼각함수: $\\sin$, $\\cos$, $\\tan$
-- 로그: $\\log$, $\\ln$
-- 루트: $\\sqrt{{x}}$, $\\sqrt[n]{{x}}$
-
-위 지침에 따라 JSON 형식으로 해설을 작성하세요.
+## 문제 유형 판별 기준
+- 보기에 ①②③④⑤가 있으면 → "objective"
+- 숫자를 직접 답하는 형식이면 → "subjective"
 """
 
 
-# OCR prompt for image-to-text
-OCR_PROMPT = """이미지에서 수학 문제를 정확하게 텍스트로 추출하세요.
+# 해설 생성 시스템 프롬프트
+EXPLANATION_SYSTEM_PROMPT = """당신은 수능 수학 전문 튜터입니다.
 
-## 추출 지침
-1. 문제 번호와 문제 내용을 구분
-2. 수식은 LaTeX 형식으로 변환 (예: 분수는 \\frac{}{}, 적분은 \\int 등)
-3. 그래프나 도형이 있으면 [그래프: 설명] 또는 [도형: 설명] 형식으로 기술
-4. 보기가 있으면 번호와 함께 나열
+## 출력 규칙
+1. LaTeX 사용 금지 (\\frac, \\sin 등 사용 X)
+2. 마크다운 수식 사용 금지
+3. \\n, \\ 문자 그대로 사용 금지
+4. 조합은 C(n, r) 형식으로 작성
+5. 분수는 1/2 형식으로 작성
+6. 곱셈은 × 기호 사용
 
-## 출력 형식
+## 출력 JSON 형식
 {
-    "problem_number": "문제 번호",
-    "problem_text": "문제 전체 내용 (LaTeX 수식 포함)",
-    "has_figure": true/false,
-    "figure_description": "도형/그래프 설명 (있는 경우)",
-    "choices": ["보기1", "보기2", ...] (객관식인 경우)
+    "problem_review": "[1. 문제 리뷰] 내용 (제목 미포함)",
+    "condition_interpretation": "[2. 조건 해석] 내용 (제목 미포함)",
+    "solution": "[3. 문제 풀이] 내용. 마지막에 반드시 '답: ②' 또는 '답: 17' 형식으로 끝낼 것"
 }
 """
 
 
-# Difficulty classification prompt
-DIFFICULTY_PROMPT = """다음 수학 문제의 난이도를 분류하세요.
+# === 해설 수준별 가이드라인 ===
 
+LEVEL_GUIDELINES = {
+    "초급": """
+## 초급 해설 가이드라인
+- 기본 개념부터 상세하게 설명
+- 모든 계산 과정을 단계별로 보여주기
+- 공식 사용 시 공식의 의미도 함께 설명
+- 어려운 용어는 쉬운 말로 풀어서 설명
+""",
+    "중급": """
+## 중급 해설 가이드라인
+- 핵심 개념 위주로 설명
+- 중요한 계산 과정만 보여주기
+- 자주 사용되는 공식은 바로 적용
+- 문제 해결의 핵심 아이디어 강조
+""",
+    "고급": """
+## 고급 해설 가이드라인
+- 간결하고 핵심적인 풀이
+- 계산 과정은 최소화
+- 고급 기법이나 빠른 풀이법 제시
+- 문제의 본질적 구조 파악에 집중
+"""
+}
+
+
+# === 과목별 핵심 개념 ===
+
+SUBJECT_CONCEPTS = {
+    "확률과통계": {
+        "경우의 수": ["순열", "조합", "중복순열", "중복조합", "분할"],
+        "확률": ["조건부확률", "독립사건", "종속사건", "베이즈 정리"],
+        "확률분포": ["이산확률분포", "이항분포", "정규분포", "표준정규분포"],
+        "통계적 추정": ["모평균 추정", "신뢰구간", "표본평균"]
+    },
+    "미적분": {
+        "수열": ["등차수열", "등비수열", "수열의 극한", "급수"],
+        "미분법": ["도함수", "미분가능성", "극대극소", "변곡점"],
+        "적분법": ["부정적분", "정적분", "치환적분", "부분적분"]
+    },
+    "기하": {
+        "이차곡선": ["포물선", "타원", "쌍곡선", "접선"],
+        "평면벡터": ["벡터의 연산", "내적", "위치벡터"],
+        "공간도형과 공간좌표": ["공간벡터", "직선의 방정식", "평면의 방정식"]
+    }
+}
+
+
+# 답 형식 템플릿
+ANSWER_FORMAT_TEMPLATE = """
+## 답 출력 형식
+- 객관식: "답: ①" 또는 "답: ②" 형식
+- 주관식: "답: {숫자}" 형식 (예: "답: 17")
+
+solution 마지막에 반드시 위 형식으로 답을 명시하세요.
+"""
+
+
+def build_full_prompt(
+    problem_text: str,
+    subject: str,
+    unit: str,
+    explanation_level: str,
+    question_type: str
+) -> str:
+    """
+    전체 프롬프트 구성
+
+    Args:
+        problem_text: 문제 텍스트
+        subject: 과목 (확률과통계/미적분/기하)
+        unit: 단원
+        explanation_level: 해설 수준 (초급/중급/고급)
+        question_type: 문제 유형 (objective/subjective)
+
+    Returns:
+        완성된 프롬프트 문자열
+    """
+    level_guide = LEVEL_GUIDELINES.get(explanation_level, LEVEL_GUIDELINES["중급"])
+
+    prompt = f"""
 ## 문제
 {problem_text}
 
-## 난이도 기준
+## 과목: {subject}
+## 단원: {unit}
+## 해설 수준: {explanation_level}
+## 문제 유형: {"객관식" if question_type == "objective" else "주관식"}
 
-### 킬러 (상위 4% 이하)
-- 복합적인 개념 결합 필요
-- 3개 이상의 핵심 조건 활용
-- 비정형적인 접근 방식 요구
-- 수능 21번, 22번, 29번, 30번 수준
+{level_guide}
 
-### 준킬러 (상위 11% 이하)
-- 2-3개 개념 결합
-- 표준적이지 않은 풀이 단계
-- 수능 20번, 28번 수준
+{ANSWER_FORMAT_TEMPLATE}
 
-### 일반 (상위 11% 초과)
-- 단일 개념 적용
-- 정형화된 풀이 패턴
-- 수능 1-19번, 23-27번 수준
-
-## 출력 형식
-{
-    "difficulty": "킬러" | "준킬러" | "일반",
-    "problem_type": "미적분" | "확률과통계" | "기하" | "수학1" | "수학2",
-    "reasoning": "난이도 판단 이유"
-}
+위 형식에 맞춰 JSON으로 출력하세요.
 """
-
-
-# Quality evaluation prompt for LangSmith
-QUALITY_EVALUATION_PROMPT = """다음 수학 해설의 품질을 평가하세요.
-
-## 원본 문제
-{problem_text}
-
-## 생성된 해설
-{explanation}
-
-## 평가 기준 (각 항목 0-100점)
-
-### 1. 조건 사용 완전성 (25%)
-- 문제에 주어진 모든 조건을 활용했는가
-- 누락된 조건이 없는가
-- 불필요한 가정을 하지 않았는가
-
-### 2. 논리 전개 명확성 (25%)
-- 각 STEP 간 연결이 자연스러운가
-- 비약 없이 단계적으로 진행되는가
-- 결론이 논리적으로 도출되는가
-
-### 3. 재현 가능성 (30%)
-- 학생이 이 해설만 보고 유사 문제를 풀 수 있는가
-- "왜 이렇게 풀었는지"가 명확한가
-- 일반화 가능한 풀이 전략이 제시되었는가
-
-### 4. 수식 표현 정확성 (20%)
-- LaTeX 문법이 올바른가
-- 수식이 명확하게 표현되었는가
-- 수학적 표기가 정확한가
-
-## 출력 형식
-{
-    "condition_usage": 0-100,
-    "logical_flow": 0-100,
-    "reproducibility": 0-100,
-    "latex_accuracy": 0-100,
-    "total_score": 가중평균,
-    "feedback": "개선이 필요한 부분",
-    "pass": true/false (75점 이상이면 true)
-}
-"""
-
-
-# Regeneration prompt when quality is below threshold
-REGENERATION_PROMPT = """이전 해설이 품질 기준을 충족하지 못했습니다. 피드백을 반영하여 다시 작성하세요.
-
-## 문제
-{problem_text}
-
-## 이전 해설의 문제점
-{feedback}
-
-## 개선 방향
-{improvement_suggestions}
-
-위 피드백을 반영하여 더 나은 해설을 JSON 형식으로 작성하세요.
-"""
+    return prompt
