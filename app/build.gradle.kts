@@ -64,6 +64,9 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
 
+    // Accompanist (Permissions)
+    implementation(libs.accompanist.permissions)
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

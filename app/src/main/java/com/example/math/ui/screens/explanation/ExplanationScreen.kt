@@ -179,13 +179,62 @@ fun SectionLabel(number: String, title: String) {
     }
 }
 
-@Composable
-fun ExplanationScreen(onReset: () -> Unit) {
-    var currentIndex by remember { mutableIntStateOf(0) }
+// 수준별 해설 데이터 생성
+private fun getExplanationDataForLevel(level: String): ExplanationData {
+    return when (level) {
+        "초급" -> ExplanationData(
+            section1 = listOf(
+                ContentItem.Text("안녕하세요! 이 문제를 함께 풀어볼게요. 먼저 문제를 천천히 살펴봅시다."),
+                ContentItem.Text("이 문제는 삼각함수가 포함된 합성함수 형태예요. 합성함수란 함수 안에 또 다른 함수가 들어있는 것을 말해요."),
+                ContentItem.Text("sin(ax + b + sin x)처럼 sin 안에 또 다른 sin이 들어있죠? 이런 문제는 한 번에 풀려고 하면 어려워요."),
+                ContentItem.Hint("핵심 전략: 먼저 특별한 x값(0, 2π 등)을 대입해서 a, b의 값을 찾고, 그 다음에 극대점을 찾는 순서로 풀어요!")
+            ),
+            section2 = listOf(
+                ContentItem.Text("(가) 조건부터 살펴볼게요. x = 0을 넣으면 어떻게 될까요?"),
+                ContentItem.Text("sin 0 = 0이므로, 안쪽 식에서 sin x 부분이 0이 되어요."),
+                ContentItem.Formula("f(0) = \\sin(a \\cdot 0 + b + \\sin 0) = \\sin b"),
+                ContentItem.Text("그리고 f(0) = 0이라고 했으니까:"),
+                ContentItem.Formula("\\sin b = 0 \\;\\Rightarrow\\; b = n\\pi \\;\\text{(n은 정수)}"),
+                ContentItem.Text("이번엔 x = 2π를 넣어볼게요. sin 2π = 0이에요."),
+                ContentItem.Formula("f(2\\pi) = \\sin(2\\pi a + b)"),
+                ContentItem.Text("그리고 f(2π) = 2πa + b라고 했으니까, sin X = X가 되려면 X = 0이어야 해요."),
+                ContentItem.Formula("2\\pi a + b = 0 \\;\\Rightarrow\\; b = -2\\pi a"),
+                ContentItem.Text("b = nπ이고 b = -2πa를 합치면:"),
+                ContentItem.Formula("a = \\frac{n}{2}"),
+                ContentItem.Text("1 ≤ a ≤ 2 조건에서 a = 1, 3/2, 2가 가능해요."),
+                ContentItem.Hint("(나) 조건으로 후보를 걸러내면 a = 3/2, b = -3π만 남아요!")
+            ),
+            steps = listOf(
+                "도함수 구하기" to listOf(
+                    ContentItem.Text("f(x) = sin(ax + b + sin x)의 도함수를 구해볼게요."),
+                    ContentItem.Text("합성함수의 미분 공식 (sin u)' = cos u · u'를 사용해요."),
+                    ContentItem.Formula("f'(x) = \\cos(ax + b + \\sin x) \\cdot (a + \\cos x)"),
+                    ContentItem.Text("a = 3/2를 대입하면:"),
+                    ContentItem.Formula("f'(x) = \\cos\\left(\\frac{3x}{2} - 3\\pi + \\sin x\\right) \\cdot \\left(\\frac{3}{2} + \\cos x\\right)"),
+                    ContentItem.Hint("cos x의 최솟값은 -1이니까, 3/2 + cos x ≥ 1/2 > 0이에요. 항상 양수!")
+                ),
+                "극대점 찾기" to listOf(
+                    ContentItem.Text("f'(x) = 0이 되려면 cos(...) = 0이어야 해요."),
+                    ContentItem.Text("g(x) = 3x/2 - 3π + sin x라고 하면, cos(g(x)) = 0이 되는 점을 찾아요."),
+                    ContentItem.Text("코사인이 0이 되는 값: ±π/2, ±3π/2, ±5π/2, ..."),
+                    ContentItem.Formula("g(0) = -3\\pi, \\quad g(4\\pi) = 3\\pi"),
+                    ContentItem.Text("g(x)가 -3π에서 3π까지 증가하면서 코사인이 0이 되는 점이 6개예요."),
+                    ContentItem.Hint("이 중 극대점은 cos가 양수→음수로 바뀌는 3개! n = 3")
+                ),
+                "최종 답 계산" to listOf(
+                    ContentItem.Text("가장 작은 극대점 α₁은 g(x) = -3π/2가 되는 점이에요."),
+                    ContentItem.Formula("\\frac{3\\alpha_1}{2} - 3\\pi + \\sin\\alpha_1 = -\\frac{3\\pi}{2}"),
+                    ContentItem.Text("α₁ = π를 대입해보면:"),
+                    ContentItem.Formula("\\frac{3\\pi}{2} - 3\\pi + 0 = -\\frac{3\\pi}{2} \\; \\checkmark"),
+                    ContentItem.Text("정답 계산:"),
+                    ContentItem.Formula("n\\alpha_1 - ab = 3\\pi - \\frac{3}{2}(-3\\pi) = 3\\pi + \\frac{9\\pi}{2} = \\frac{15\\pi}{2}"),
+                    ContentItem.Formula("\\frac{q}{p}\\pi = \\frac{15}{2}\\pi \\;\\Rightarrow\\; p = 2, \\; q = 15"),
+                    ContentItem.Answer("따라서 정답은 p + q = 17 입니다.")
+                )
+            )
+        )
 
-    // 해설 데이터
-    val explanationData = remember {
-        ExplanationData(
+        "중급" -> ExplanationData(
             section1 = listOf(
                 ContentItem.Text("이 문제는 처음 보면 삼각함수 안에 또 삼각함수가 들어 있는 합성함수 형태예요. 이런 문제는 식을 무작정 전개하려고 하면 오히려 길이 꼬이기 쉽습니다."),
                 ContentItem.Text("그래서 먼저 겉에 있는 sin과 안쪽 식 ax + b + sin x를 분리해서 보는 게 좋아요."),
@@ -240,6 +289,54 @@ fun ExplanationScreen(onReset: () -> Unit) {
                 )
             )
         )
+
+        "고급" -> ExplanationData(
+            section1 = listOf(
+                ContentItem.Text("합성함수 f(x) = sin(ax + b + sin x)에서 특수값 대입으로 a, b를 결정하고, 극대점 개수를 구하는 문제입니다."),
+                ContentItem.Hint("접근: (가)로 a, b 후보 → (나)로 필터링 → 극대점 개수 및 α₁ 계산")
+            ),
+            section2 = listOf(
+                ContentItem.Text("(가) 조건에서:"),
+                ContentItem.Formula("f(0) = \\sin b = 0 \\;\\Rightarrow\\; b = n\\pi"),
+                ContentItem.Formula("f(2\\pi) = 2\\pi a + b \\;\\Rightarrow\\; 2\\pi a + b = 0"),
+                ContentItem.Text("따라서 b = −2πa, a = n/2 (n은 정수)"),
+                ContentItem.Text("1 ≤ a ≤ 2에서 a ∈ {1, 3/2, 2}"),
+                ContentItem.Formula("f'(x) = \\cos(ax + b + \\sin x)(a + \\cos x)"),
+                ContentItem.Hint("(나) 조건 검증 시 a = 3/2, b = −3π만 만족")
+            ),
+            steps = listOf(
+                "극대점 분석" to listOf(
+                    ContentItem.Text("g(x) = 3x/2 − 3π + sin x로 치환"),
+                    ContentItem.Formula("g(0) = -3\\pi, \\; g(4\\pi) = 3\\pi, \\; g'(x) > 0"),
+                    ContentItem.Text("cos(g(x)) = 0인 점: g(x) = ±π/2, ±3π/2, ±5π/2"),
+                    ContentItem.Text("극대: g(x) = −3π/2, π/2, 5π/2 → n = 3")
+                ),
+                "최종 계산" to listOf(
+                    ContentItem.Formula("g(\\alpha_1) = -\\frac{3\\pi}{2} \\;\\Rightarrow\\; \\alpha_1 = \\pi"),
+                    ContentItem.Formula("n\\alpha_1 - ab = 3\\pi + \\frac{9\\pi}{2} = \\frac{15\\pi}{2}"),
+                    ContentItem.Formula("p = 2, \\; q = 15"),
+                    ContentItem.Answer("정답: p + q = 17")
+                )
+            )
+        )
+
+        else -> getExplanationDataForLevel("중급")
+    }
+}
+
+@Composable
+fun ExplanationScreen(
+    explanationLevel: String = "중급",
+    imageBase64: String? = null,  // 촬영된 이미지 (추후 API 전송용)
+    onReset: () -> Unit
+) {
+    // TODO: imageBase64를 백엔드 API로 전송하여 실제 해설 받기
+    // 현재는 데모 데이터 사용
+    var currentIndex by remember { mutableIntStateOf(0) }
+
+    // 수준별 해설 데이터
+    val explanationData = remember(explanationLevel) {
+        getExplanationDataForLevel(explanationLevel)
     }
 
     // 인덱스 계산
@@ -264,11 +361,12 @@ fun ExplanationScreen(onReset: () -> Unit) {
             .background(Blue50)
             .statusBarsPadding()
     ) {
-        // 미니멀 헤더 (뒤로가기만)
-        Box(
+        // 헤더 (뒤로가기 + 수준 표시)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             FilledIconButton(
                 onClick = onReset,
@@ -283,6 +381,22 @@ fun ExplanationScreen(onReset: () -> Unit) {
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "뒤로가기",
                     modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 해설 수준 뱃지
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Blue500.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    text = "$explanationLevel 해설",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Blue600,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
         }
@@ -524,6 +638,9 @@ private fun StepsContent(
 @Composable
 private fun ExplanationScreenPreview() {
     MathAITheme {
-        ExplanationScreen(onReset = {})
+        ExplanationScreen(
+            explanationLevel = "중급",
+            onReset = {}
+        )
     }
 }
