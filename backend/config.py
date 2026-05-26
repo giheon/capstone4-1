@@ -1,7 +1,5 @@
 """
 중앙 집중식 설정 파일
-
-모든 설정을 한 곳에서 관리:
 - 모델 라우팅 (과목 × 난이도 → 모델)
 - 해설 프롬프트 (과목 × 해설수준)
 - Few-shot 예제 (과목 × 단원)
@@ -201,24 +199,24 @@ FEW_SHOT_EXAMPLES = {
         "경우의 수": [
             # 예제 1
             {
-                "problem": "서로 다른 5개의 공을 3개의 상자에 넣는 경우의 수는?",
-                "problem_review": "5개의 서로 다른 공을 3개의 상자에 배분하는 문제입니다. 각 공은 독립적으로 3개의 상자 중 하나를 선택할 수 있습니다.",
-                "condition_interpretation": "각 공마다 3가지 선택지가 있고, 공들은 서로 구별되므로 곱의 법칙을 적용합니다.",
-                "solution": "각 공은 3개의 상자 중 하나에 들어갈 수 있습니다. 5개의 공이 각각 독립적으로 선택하므로 $3^5 = 243$입니다. 답: 243"
+                "problem": "",
+                "problem_review": "",
+                "condition_interpretation": "",
+                "solution": ""
             },
             # 예제 2
             {
-                "problem": "APPLE에서 문자를 일렬로 나열하는 경우의 수는?",
-                "problem_review": "5개의 문자 중 P가 2개로 중복되는 순열 문제입니다.",
-                "condition_interpretation": "전체 5개 문자, P가 2개 중복이므로 같은 것이 있는 순열 공식을 사용합니다.",
-                "solution": "같은 것이 있는 순열 공식을 적용하면 $\\frac{5!}{2!} = \\frac{120}{2} = 60$입니다. 답: 60"
+                "problem": "",
+                "problem_review": "",
+                "condition_interpretation": "",
+                "solution": ""
             },
             # 예제 3
             {
-                "problem": "10명 중 3명을 뽑는 조합의 수는?",
-                "problem_review": "10명에서 순서 없이 3명을 선택하는 조합 문제입니다.",
-                "condition_interpretation": "순서가 중요하지 않으므로 조합 공식 $_{n}C_{r}$을 사용합니다.",
-                "solution": "$_{10}C_{3} = \\frac{10!}{3!7!} = \\frac{10 \\times 9 \\times 8}{3 \\times 2 \\times 1} = 120$입니다. 답: 120"
+                "problem": "",
+                "problem_review": "",
+                "condition_interpretation": "",
+                "solution": ""
             },
         ],
         "확률": [
