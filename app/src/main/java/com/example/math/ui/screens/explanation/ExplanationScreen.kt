@@ -20,6 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.math.data.api.ExplanationResponse
 import com.example.math.ui.components.LatexFormula
 import com.example.math.ui.theme.*
 import kotlinx.coroutines.delay
@@ -327,16 +329,60 @@ private fun getExplanationDataForLevel(level: String): ExplanationData {
 @Composable
 fun ExplanationScreen(
     explanationLevel: String = "중급",
-    imageBase64: String? = null,  // 촬영된 이미지 (추후 API 전송용)
-    onReset: () -> Unit
+    imageBase64: String? = null,
+    onReset: () -> Unit,
+    viewModel: ExplanationViewModel = viewModel(factory = ExplanationViewModel.factory())
 ) {
-    // TODO: imageBase64를 백엔드 API로 전송하여 실제 해설 받기
-    // 현재는 데모 데이터 사용
+    val uiState by viewModel.uiState.collectAsState()
     var currentIndex by remember { mutableIntStateOf(0) }
 
-    // 수준별 해설 데이터
-    val explanationData = remember(explanationLevel) {
-        getExplanationDataForLevel(explanationLevel)
+    LaunchedEffect(imageBase64, explanationLevel) {
+        currentIndex = 0
+        viewModel.loadExplanation(imageBase64, explanationLevel)
+    }
+
+    when (val state = uiState) {
+        ExplanationUiState.Idle,
+        ExplanationUiState.Loading -> {
+            ExplanationLoadingScreen(
+                explanationLevel = explanationLevel,
+                onReset = onReset
+            )
+        }
+
+        is ExplanationUiState.Error -> {
+            ExplanationErrorScreen(
+                message = state.message,
+                onBack = onReset,
+                onRetry = {
+                    currentIndex = 0
+                    viewModel.loadExplanation(imageBase64, explanationLevel)
+                }
+            )
+        }
+
+        is ExplanationUiState.Success -> {
+            ExplanationContentScreen(
+                explanationLevel = explanationLevel,
+                response = state.response,
+                currentIndex = currentIndex,
+                onCurrentIndexChange = { currentIndex = it },
+                onReset = onReset
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExplanationContentScreen(
+    explanationLevel: String,
+    response: ExplanationResponse,
+    currentIndex: Int,
+    onCurrentIndexChange: (Int) -> Unit,
+    onReset: () -> Unit
+) {
+    val explanationData = remember(response) {
+        response.toExplanationData()
     }
 
     // 인덱스 계산
@@ -424,7 +470,7 @@ fun ExplanationScreen(
                         items = explanationData.section1,
                         startIndex = 0,
                         currentIndex = currentIndex,
-                        onItemComplete = { currentIndex++ }
+                        onItemComplete = { onCurrentIndexChange(currentIndex + 1) }
                     )
                 }
             }
@@ -449,8 +495,8 @@ fun ExplanationScreen(
                             items = explanationData.section2,
                             startIndex = section2Start + 1,
                             currentIndex = currentIndex,
-                            onItemComplete = { currentIndex++ },
-                            onHeaderShow = { currentIndex++ }
+                            onItemComplete = { onCurrentIndexChange(currentIndex + 1) },
+                            onHeaderShow = { onCurrentIndexChange(currentIndex + 1) }
                         )
                     }
                 }
@@ -474,7 +520,7 @@ fun ExplanationScreen(
                             steps = explanationData.steps,
                             stepIndices = stepIndices,
                             currentIndex = currentIndex,
-                            onItemComplete = { currentIndex++ }
+                            onItemComplete = { onCurrentIndexChange(currentIndex + 1) }
                         )
                     }
                 }
@@ -483,6 +529,188 @@ fun ExplanationScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
+}
+
+@Composable
+private fun ExplanationLoadingScreen(
+    explanationLevel: String,
+    onReset: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Blue50)
+            .statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledIconButton(
+                onClick = onReset,
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = Color.White,
+                    contentColor = Gray600
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "뒤로가기",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Blue500.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    text = "$explanationLevel 해설",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Blue600,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+        CircularProgressIndicator(color = Blue500)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "AI 해설을 생성하고 있습니다",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = Blue900
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "OCR, 해설 후보 생성, 검증 과정을 진행 중입니다",
+            fontSize = 13.sp,
+            color = Gray500,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ExplanationErrorScreen(
+    message: String,
+    onBack: () -> Unit,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Blue50)
+            .statusBarsPadding()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "해설 생성 실패",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Blue900
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = message,
+            fontSize = 14.sp,
+            color = Gray600,
+            lineHeight = 20.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Blue500)
+        ) {
+            Text("다시 시도")
+        }
+        TextButton(onClick = onBack) {
+            Text("홈으로 돌아가기", color = Gray600)
+        }
+    }
+}
+
+private fun ExplanationResponse.toExplanationData(): ExplanationData {
+    val reviewItems = problemReview.toContentItems()
+        .ifEmpty { listOf(ContentItem.Text("문제 리뷰가 비어 있습니다.")) }
+    val conditionItems = conditionInterpretation.toContentItems()
+        .ifEmpty { listOf(ContentItem.Text("조건 해석이 비어 있습니다.")) }
+    val solutionItems = solution.toContentItems().toMutableList()
+
+    if (answer.isNotBlank() && solutionItems.none { it is ContentItem.Answer }) {
+        solutionItems.add(ContentItem.Answer("답: $answer"))
+    }
+
+    return ExplanationData(
+        section1 = reviewItems,
+        section2 = conditionItems,
+        steps = listOf("AI 해설" to solutionItems.ifEmpty {
+            listOf(ContentItem.Text("문제 풀이가 비어 있습니다."))
+        })
+    )
+}
+
+private fun String.toContentItems(): List<ContentItem> {
+    val normalized = replace("\\n", "\n").trim()
+    if (normalized.isBlank()) return emptyList()
+
+    val items = mutableListOf<ContentItem>()
+    normalized.lines()
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .forEach { line ->
+            val answerLine = line.startsWith("답:")
+            parseLatexLine(line).forEach { item ->
+                if (answerLine && item is ContentItem.Text) {
+                    items.add(ContentItem.Answer(item.text))
+                } else {
+                    items.add(item)
+                }
+            }
+        }
+    return items
+}
+
+private fun parseLatexLine(line: String): List<ContentItem> {
+    val regex = Regex("""\$(.+?)\$""")
+    val items = mutableListOf<ContentItem>()
+    var lastIndex = 0
+
+    regex.findAll(line).forEach { match ->
+        val textBefore = line.substring(lastIndex, match.range.first).trim()
+        if (textBefore.isNotBlank()) {
+            items.add(ContentItem.Text(textBefore))
+        }
+
+        val formula = match.groupValues[1].trim()
+        if (formula.isNotBlank()) {
+            items.add(ContentItem.Formula(formula))
+        }
+        lastIndex = match.range.last + 1
+    }
+
+    val remainingText = line.substring(lastIndex).trim()
+    if (remainingText.isNotBlank()) {
+        items.add(ContentItem.Text(remainingText))
+    }
+
+    return items.ifEmpty { listOf(ContentItem.Text(line)) }
 }
 
 @Composable

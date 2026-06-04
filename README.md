@@ -117,6 +117,7 @@ cd backend
 # 환경변수 설정
 cp .env.example .env
 # .env 파일에 OPENAI_API_KEY 입력
+# LangSmith 추적을 쓰려면 LANGSMITH_API_KEY도 입력
 
 # 의존성 설치
 pip install -r requirements.txt
@@ -124,6 +125,16 @@ pip install -r requirements.txt
 # 실행
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
+
+LangSmith 연동에는 LangSmith 계정의 API 키가 필요합니다. `backend/.env`에 아래 값을 설정하면 백엔드의 LangGraph/LCEL 실행이 `math-explanation` 프로젝트로 트래킹됩니다.
+
+```bash
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your_langsmith_api_key_here
+LANGSMITH_PROJECT=math-explanation
+```
+
+Android 에뮬레이터는 기본적으로 `http://10.0.2.2:8000`의 백엔드에 연결합니다. 실제 기기에서 테스트할 경우 [app/build.gradle.kts](/Users/seonmain10/Desktop/capstone/app/build.gradle.kts)의 `API_BASE_URL`을 개발 머신 IP로 변경해야 합니다.
 
 ### Android App
 ```bash

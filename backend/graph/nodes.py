@@ -63,6 +63,7 @@ async def ocr_routing_node(state: MathExplanationState) -> Dict[str, Any]:
     LCEL 사용: Prompt | Model | Parser
     """
     image_base64 = state["image_base64"]
+    trace_metadata = state.get("trace_metadata", {})
 
     # LCEL 체인 구성
     prompt = ChatPromptTemplate.from_messages([
@@ -79,7 +80,19 @@ async def ocr_routing_node(state: MathExplanationState) -> Dict[str, Any]:
     chain = prompt | model | parser
 
     try:
-        result = await chain.ainvoke({"image": image_base64})
+        result = await chain.ainvoke(
+            {"image": image_base64},
+            config={
+                "run_name": "ocr_routing",
+                "tags": ["ocr", "routing", "vision"],
+                "metadata": {
+                    **trace_metadata,
+                    "node": "ocr_routing",
+                    "model": OCR_MODEL,
+                    "explanation_level": state.get("explanation_level", "중급")
+                }
+            }
+        )
 
         # 결과 추출
         subject = result.get("subject", "미적분")
@@ -195,7 +208,9 @@ async def generate_single_explanation(
     unit: str,
     explanation_level: str,
     question_type: str,
-    selected_model: str
+    selected_model: str,
+    candidate_index: int = 0,
+    trace_metadata: Dict[str, Any] | None = None
 ) -> dict:
     """단일 해설 생성 (LCEL 사용)"""
 
@@ -216,7 +231,23 @@ async def generate_single_explanation(
     chain = prompt | model | parser
 
     try:
-        result = await chain.ainvoke({"user_prompt": user_prompt})
+        result = await chain.ainvoke(
+            {"user_prompt": user_prompt},
+            config={
+                "run_name": f"generate_explanation_candidate_{candidate_index + 1}",
+                "tags": ["explanation-generation", "candidate"],
+                "metadata": {
+                    **(trace_metadata or {}),
+                    "node": "generate_explanation",
+                    "candidate_index": candidate_index,
+                    "model": selected_model,
+                    "subject": subject,
+                    "unit": unit,
+                    "explanation_level": explanation_level,
+                    "question_type": question_type
+                }
+            }
+        )
 
         # 답 추출
         solution = result.get("solution", "")
@@ -277,13 +308,21 @@ async def explanation_generation_node(state: MathExplanationState) -> Dict[str, 
     explanation_level = state["explanation_level"]
     question_type = state["question_type"]
     selected_model = state["selected_model"]
+    trace_metadata = state.get("trace_metadata", {})
 
     # N회 병렬 호출
     tasks = [
         generate_single_explanation(
-            problem_text, subject, unit, explanation_level, question_type, selected_model
+            problem_text,
+            subject,
+            unit,
+            explanation_level,
+            question_type,
+            selected_model,
+            candidate_index=index,
+            trace_metadata=trace_metadata
         )
-        for _ in range(PARALLEL_CALL_COUNT)
+        for index in range(PARALLEL_CALL_COUNT)
     ]
 
     candidates = await asyncio.gather(*tasks)

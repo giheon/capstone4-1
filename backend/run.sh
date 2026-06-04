@@ -7,6 +7,18 @@ if [ -f .env ]; then
     export $(cat .env | xargs)
 fi
 
+if [ -n "$LANGSMITH_API_KEY" ] && [ -z "$LANGCHAIN_API_KEY" ]; then
+    export LANGCHAIN_API_KEY="$LANGSMITH_API_KEY"
+fi
+
+if [ -n "$LANGSMITH_PROJECT" ] && [ -z "$LANGCHAIN_PROJECT" ]; then
+    export LANGCHAIN_PROJECT="$LANGSMITH_PROJECT"
+fi
+
+if [ "$LANGSMITH_TRACING" = "true" ] && [ -z "$LANGCHAIN_TRACING_V2" ]; then
+    export LANGCHAIN_TRACING_V2=true
+fi
+
 # Check for required environment variables
 if [ -z "$OPENAI_API_KEY" ]; then
     echo "Error: OPENAI_API_KEY is not set"

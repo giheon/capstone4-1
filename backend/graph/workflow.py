@@ -14,6 +14,8 @@ Architecture (3 Nodes):
    - 모델 라우팅                                  - LaTeX 검증
                                                   - 최종 선택
 """
+from typing import Any, Dict, Optional
+
 from langgraph.graph import StateGraph, END
 
 from .state import MathExplanationState, create_initial_state
@@ -58,7 +60,8 @@ explanation_graph = create_explanation_graph()
 
 async def run_explanation_workflow(
     image_base64: str,
-    explanation_level: str = "중급"
+    explanation_level: str = "중급",
+    trace_metadata: Optional[Dict[str, Any]] = None
 ) -> MathExplanationState:
     """
     Run the complete explanation workflow.
@@ -72,18 +75,27 @@ async def run_explanation_workflow(
     """
     initial_state = create_initial_state(
         image_base64=image_base64,
-        explanation_level=explanation_level
+        explanation_level=explanation_level,
+        trace_metadata=trace_metadata
     )
 
     # Run the graph
-    final_state = await explanation_graph.ainvoke(initial_state)
+    final_state = await explanation_graph.ainvoke(
+        initial_state,
+        config={
+            "run_name": "math_explanation_workflow",
+            "tags": ["android-app", "math-explanation"],
+            "metadata": trace_metadata or {}
+        }
+    )
 
     return final_state
 
 
 async def stream_explanation_workflow(
     image_base64: str,
-    explanation_level: str = "중급"
+    explanation_level: str = "중급",
+    trace_metadata: Optional[Dict[str, Any]] = None
 ):
     """
     Stream the explanation workflow with intermediate results.
@@ -93,11 +105,19 @@ async def stream_explanation_workflow(
     """
     initial_state = create_initial_state(
         image_base64=image_base64,
-        explanation_level=explanation_level
+        explanation_level=explanation_level,
+        trace_metadata=trace_metadata
     )
 
     # Stream through graph nodes
-    async for event in explanation_graph.astream(initial_state):
+    async for event in explanation_graph.astream(
+        initial_state,
+        config={
+            "run_name": "math_explanation_workflow_stream",
+            "tags": ["android-app", "math-explanation", "stream"],
+            "metadata": trace_metadata or {}
+        }
+    ):
         for node_name, node_output in event.items():
 
             if node_name == "ocr_routing":
