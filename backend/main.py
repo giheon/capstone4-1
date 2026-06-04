@@ -18,11 +18,11 @@ Endpoints:
 """
 import json
 import base64
-from typing import Optional, Literal, List
+from typing import Optional, Literal, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from dotenv import load_dotenv
@@ -66,6 +66,9 @@ class ExplanationRequest(BaseModel):
     """Request model for explanation generation"""
     image_base64: str
     explanation_level: Literal["초급", "중급", "고급"] = "중급"
+    client_session_id: Optional[str] = None
+    client_source: str = "android"
+    client_metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ExplanationResponse(BaseModel):
@@ -87,6 +90,16 @@ class ExplanationResponse(BaseModel):
     # 메타 정보
     majority_answer: str  # 다수결 답
     is_complete: bool
+
+
+def build_trace_metadata(request: ExplanationRequest) -> Dict[str, Any]:
+    """Build LangSmith-safe metadata for an Android test request."""
+    return {
+        "client_source": request.client_source,
+        "client_session_id": request.client_session_id,
+        "explanation_level": request.explanation_level,
+        **request.client_metadata
+    }
 
 
 class StreamChunk(BaseModel):
@@ -132,7 +145,8 @@ async def generate_explanation(request: ExplanationRequest):
         # Run the LangGraph workflow
         result = await run_explanation_workflow(
             image_base64=request.image_base64,
-            explanation_level=request.explanation_level
+            explanation_level=request.explanation_level,
+            trace_metadata=build_trace_metadata(request)
         )
 
         # Check for errors
@@ -178,7 +192,8 @@ async def stream_explanation(request: ExplanationRequest):
         try:
             async for chunk in stream_explanation_workflow(
                 image_base64=request.image_base64,
-                explanation_level=request.explanation_level
+                explanation_level=request.explanation_level,
+                trace_metadata=build_trace_metadata(request)
             ):
                 yield {
                     "event": "message",
@@ -223,7 +238,13 @@ async def upload_and_explain(
         async def event_generator():
             async for chunk in stream_explanation_workflow(
                 image_base64=image_base64,
-                explanation_level=explanation_level
+                explanation_level=explanation_level,
+                trace_metadata={
+                    "client_source": "upload",
+                    "client_session_id": None,
+                    "explanation_level": explanation_level,
+                    "filename": file.filename
+                }
             ):
                 yield {
                     "event": "message",

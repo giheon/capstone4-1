@@ -6,7 +6,7 @@ Updated Architecture (3 Nodes):
 2. Node 2: Explanation Generation (3회 병렬 호출)
 3. Node 3: Hard Gate (검증 & 선택)
 """
-from typing import TypedDict, Literal, Optional, List
+from typing import TypedDict, Literal, Optional, List, Dict, Any
 from dataclasses import dataclass
 
 
@@ -22,6 +22,7 @@ class MathExplanationState(TypedDict):
     # ═══════════════════════════════════════════════════════════════
     image_base64: str                                    # 문제 이미지
     explanation_level: Literal["초급", "중급", "고급"]    # 사용자가 선택
+    trace_metadata: Dict[str, Any]                       # LangSmith 추적 메타데이터
 
     # ═══════════════════════════════════════════════════════════════
     # Node 1: OCR + 라우팅 결과
@@ -118,13 +119,15 @@ class ValidationResult:
 
 def create_initial_state(
     image_base64: str,
-    explanation_level: str = "중급"
+    explanation_level: str = "중급",
+    trace_metadata: Optional[Dict[str, Any]] = None
 ) -> MathExplanationState:
     """초기 state 생성 헬퍼 함수"""
     return MathExplanationState(
         # 입력
         image_base64=image_base64,
         explanation_level=explanation_level,
+        trace_metadata=trace_metadata or {},
 
         # OCR + 라우팅 결과 (초기화)
         problem_text="",
