@@ -2,9 +2,13 @@
 
 # Math Explanation API Server Startup Script
 
+cd "$(dirname "$0")"
+
 # Load environment variables
 if [ -f .env ]; then
-    export $(cat .env | xargs)
+    set -a
+    . ./.env
+    set +a
 fi
 
 if [ -n "$LANGSMITH_API_KEY" ] && [ -z "$LANGCHAIN_API_KEY" ]; then
@@ -20,9 +24,9 @@ if [ "$LANGSMITH_TRACING" = "true" ] && [ -z "$LANGCHAIN_TRACING_V2" ]; then
 fi
 
 # Check for required environment variables
-if [ -z "$OPENAI_API_KEY" ]; then
-    echo "Error: OPENAI_API_KEY is not set"
-    echo "Please copy .env.example to .env and fill in your API keys"
+if [ -z "$OPENAI_API_KEY" ] && [ -z "$GOOGLE_API_KEY" ]; then
+    echo "Error: neither OPENAI_API_KEY nor GOOGLE_API_KEY is set"
+    echo "Please copy .env.example to .env and fill in at least one API key"
     exit 1
 fi
 

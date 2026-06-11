@@ -1,10 +1,12 @@
 """
 LangGraph components for math explanation generation.
 
-Architecture (3 Nodes):
-1. OCR + Routing (통합) - LCEL
-2. Explanation Generation (3회 병렬 호출) - LCEL
-3. Hard Gate (검증 & 선택) - 순수 코드
+Architecture (5 Stages):
+1. OCR extraction - LCEL
+2. Difficulty routing - LCEL
+3. Model selection - code
+4. Explanation Generation (3회 병렬 호출) - LCEL
+5. Hard Gate (검증 & 선택) - 순수 코드
 """
 from .state import (
     MathExplanationState,
@@ -19,7 +21,8 @@ from .workflow import (
     create_explanation_graph
 )
 from .nodes import (
-    ocr_routing_node,
+    ocr_extraction_node,
+    difficulty_routing_node,
     explanation_generation_node,
     hard_gate_node,
     extract_answer,
@@ -42,7 +45,8 @@ __all__ = [
     "create_explanation_graph",
 
     # Nodes
-    "ocr_routing_node",
+    "ocr_extraction_node",
+    "difficulty_routing_node",
     "explanation_generation_node",
     "hard_gate_node",
 

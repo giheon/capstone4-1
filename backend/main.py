@@ -1,10 +1,12 @@
 """
 FastAPI Server for Math Explanation Generation
 
-Architecture (3 Nodes):
-- Node 1: OCR + Routing (통합)
-- Node 2: Explanation Generation (3회 병렬 호출)
-- Node 3: Hard Gate (검증 & 선택)
+Architecture (5 Stages):
+- Node 1: OCR extraction
+- Node 2: Difficulty routing
+- Node 3: Model selection
+- Node 4: Explanation Generation (3회 병렬 호출)
+- Node 5: Hard Gate (검증 & 선택)
 
 Endpoints:
 - GET  /health              : Health check
@@ -18,33 +20,71 @@ Endpoints:
 """
 import json
 import base64
+from pathlib import Path
 from typing import Optional, Literal, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sse_starlette.sse import EventSourceResponse
+try:
+    from sse_starlette.sse import EventSourceResponse
+except ImportError:  # pragma: no cover - optional in local env
+    class EventSourceResponse:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "sse-starlette is required for streaming endpoints. "
+                "Add it to backend/requirements.txt and install dependencies."
+            )
 
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from backend/.env explicitly.
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
-from graph.workflow import (
-    run_explanation_workflow,
-    stream_explanation_workflow
-)
-
-from config import (
-    UNITS,
-    MODEL_ROUTING,
-    EXPLANATION_PROMPTS,
-    PARALLEL_CALL_COUNT
-)
+try:
+    from backend.graph.workflow import (
+        run_explanation_workflow,
+        stream_explanation_workflow
+    )
+    from backend.config import (
+        UNITS,
+        PARALLEL_CALL_COUNT,
+        DIRECT_EXPLANATION_OUTPUT
+    )
+    from backend.prompts import (
+        EXPLANATION_LEVELS,
+        PROMPT_DIFFICULTIES,
+        TOTAL_EXPLANATION_PROMPT_COUNT,
+    )
+    from backend.routing.model_router import (
+        MODEL_ROUTING,
+        DIFFICULTY_ROUTER_MODEL,
+        EXPLANATION_OVERRIDE_MODEL,
+    )
+except ImportError:
+    from graph.workflow import (
+        run_explanation_workflow,
+        stream_explanation_workflow
+    )
+    from config import (
+        UNITS,
+        PARALLEL_CALL_COUNT,
+        DIRECT_EXPLANATION_OUTPUT
+    )
+    from prompts import (
+        EXPLANATION_LEVELS,
+        PROMPT_DIFFICULTIES,
+        TOTAL_EXPLANATION_PROMPT_COUNT,
+    )
+    from routing.model_router import (
+        MODEL_ROUTING,
+        DIFFICULTY_ROUTER_MODEL,
+        EXPLANATION_OVERRIDE_MODEL,
+    )
 
 app = FastAPI(
     title="수능수학 AI 해설 API",
-    description="LangGraph 기반 수학 문제 해설 생성 서비스 (3노드 아키텍처)",
+    description="LangGraph 기반 수학 문제 해설 생성 서비스 (5단계 아키텍처)",
     version="2.0.0"
 )
 
@@ -79,16 +119,27 @@ class ExplanationResponse(BaseModel):
     subject: str  # 확률과통계/미적분/기하
     difficulty: str  # 쉬움/보통/어려움/킬러
     unit: str  # 단원
+    curriculum_area: str
+    major_topics: List[str]
+    routing_difficulty: str
+    routing_confidence: float
+    difficulty_evidence: List[str]
+    borderline_with: str
+    borderline_reason: str
     selected_model: str  # 사용된 모델
 
     # 최종 해설
     problem_review: str  # [1. 문제 리뷰]
     condition_interpretation: str  # [2. 조건 해석]
     solution: str  # [3. 문제 풀이]
+    key_points: str = ""
+    approach_perspectives: str = ""
+    transferable_insight: str = ""
     answer: str  # 최종 답
 
     # 메타 정보
     majority_answer: str  # 다수결 답
+    stage_timings: Dict[str, float] = Field(default_factory=dict)
     is_complete: bool
 
 
@@ -121,7 +172,7 @@ async def health_check():
         "status": "healthy",
         "service": "math-explanation-api",
         "version": "2.0.0",
-        "architecture": "3-node (OCR+Routing → Generation(3x) → HardGate)",
+        "architecture": "5-stage (OCR → DifficultyRouter → ModelSelect → Generation(3x) → HardGate)",
         "parallel_calls": PARALLEL_CALL_COUNT
     }
 
@@ -162,12 +213,23 @@ async def generate_explanation(request: ExplanationRequest):
             subject=result.get("subject", "미적분"),
             difficulty=result.get("difficulty", "보통"),
             unit=result.get("unit", ""),
+            curriculum_area=result.get("curriculum_area", ""),
+            major_topics=result.get("major_topics", []),
+            routing_difficulty=result.get("routing_difficulty", "medium"),
+            routing_confidence=result.get("routing_confidence", 0.0),
+            difficulty_evidence=result.get("difficulty_evidence", []),
+            borderline_with=result.get("borderline_with", "none"),
+            borderline_reason=result.get("borderline_reason", ""),
             selected_model=result.get("selected_model", ""),
             problem_review=result.get("problem_review", ""),
             condition_interpretation=result.get("condition_interpretation", ""),
             solution=result.get("solution", ""),
+            key_points=result.get("key_points", ""),
+            approach_perspectives=result.get("approach_perspectives", ""),
+            transferable_insight=result.get("transferable_insight", ""),
             answer=result.get("answer", ""),
             majority_answer=result.get("majority_answer", ""),
+            stage_timings=result.get("stage_timings", {}),
             is_complete=result.get("is_complete", False)
         )
 
@@ -294,9 +356,9 @@ async def get_explanation_levels():
     """해설 수준 목록 조회"""
     return {
         "levels": [
-            {"value": "초급", "description": "기본 개념 중심의 상세한 설명"},
-            {"value": "중급", "description": "핵심 풀이 과정 중심"},
-            {"value": "고급", "description": "간결한 풀이와 심화 내용"}
+            {"value": "초급", "description": "개념 설명이 추가된 수업형 해설"},
+            {"value": "중급", "description": "본프롬프트 기반의 표준 해설"},
+            {"value": "고급", "description": "키포인트와 확장성을 짚는 코칭형 해설"}
         ]
     }
 
@@ -307,16 +369,20 @@ async def get_config():
     return {
         "subjects": list(UNITS.keys()),
         "difficulties": ["쉬움", "보통", "어려움", "킬러"],
-        "explanation_levels": ["초급", "중급", "고급"],
+        "routing_difficulties": list(PROMPT_DIFFICULTIES),
+        "explanation_levels": list(EXPLANATION_LEVELS),
         "parallel_call_count": PARALLEL_CALL_COUNT,
+        "direct_explanation_output": DIRECT_EXPLANATION_OUTPUT,
         "model_routing": {
             f"{subject}/{difficulty}": model
             for (subject, difficulty), model in MODEL_ROUTING.items()
         },
-        "prompt_count": len(EXPLANATION_PROMPTS),
+        "prompt_count": TOTAL_EXPLANATION_PROMPT_COUNT,
         "units_per_subject": {
             subject: units for subject, units in UNITS.items()
-        }
+        },
+        "difficulty_router_model": DIFFICULTY_ROUTER_MODEL,
+        "explanation_override_model": EXPLANATION_OVERRIDE_MODEL,
     }
 
 
@@ -352,7 +418,14 @@ async def test_mock_explanation(
         "subject": "미적분",
         "difficulty": "보통",
         "unit": "미분법",
-        "selected_model": "gpt-4o-mini",
+        "curriculum_area": "differentiation",
+        "major_topics": ["function_limits", "function_continuity", "derivative_definition"],
+        "routing_difficulty": "medium",
+        "routing_confidence": 0.91,
+        "difficulty_evidence": ["도함수 계산 후 극값 판정으로 바로 진행 가능", "표준 미분-증감표 유형이다"],
+        "borderline_with": "none",
+        "borderline_reason": "",
+        "selected_model": "gpt-5.4-nano",
         "problem_review": "3차 함수의 극값을 구하는 문제입니다. $f'(x) = 0$인 점에서 극값 후보를 찾고, 부호 변화를 확인합니다.",
         "condition_interpretation": "$f(x) = x^3 - 3x^2 + 2$는 3차 함수이며, 미분하면 $f'(x) = 3x^2 - 6x$입니다.",
         "solution": "$f'(x) = 3x^2 - 6x = 3x(x-2) = 0$에서 $x = 0$ 또는 $x = 2$입니다.\n\n$x = 0$에서 $f'(x)$의 부호가 양에서 음으로 바뀌므로 극대입니다.\n\n$f(0) = 0 - 0 + 2 = 2$\n\n따라서 극댓값은 2입니다.\n\n답: 2",

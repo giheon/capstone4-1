@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,15 +30,28 @@ import kotlinx.coroutines.delay
 // 콘텐츠 타입 정의
 sealed class ContentItem {
     data class Text(val text: String) : ContentItem()
-    data class Formula(val latex: String) : ContentItem()  // LaTeX 형식
+    data class Formula(
+        val latex: String,
+        val display: Boolean = false
+    ) : ContentItem()  // LaTeX 형식
+    data class RichLine(val parts: List<InlinePart>) : ContentItem()
     data class Hint(val text: String) : ContentItem()  // 부드러운 강조
     data class Answer(val text: String) : ContentItem()  // 정답 (문제풀이 내부)
 }
 
+sealed class InlinePart {
+    data class Text(val text: String) : InlinePart()
+    data class Formula(val latex: String) : InlinePart()
+}
+
 // 전체 해설 데이터
 data class ExplanationData(
+    val conceptItems: List<ContentItem> = emptyList(),
+    val section1Title: String = "문제 리뷰",
     val section1: List<ContentItem>,
+    val section2Title: String = "조건 해석",
     val section2: List<ContentItem>,
+    val stepsTitle: String = "문제 풀이",
     val steps: List<Pair<String, List<ContentItem>>>,  // (Step 제목, 내용)
 )
 
@@ -91,12 +105,226 @@ fun StreamingText(
 @Composable
 fun FormulaBox(
     formula: String,
+    displayMode: Boolean = false,
+    inline: Boolean = false,
     onComplete: () -> Unit = {}
 ) {
     LatexFormula(
         latex = formula,
+        displayMode = displayMode,
+        inline = inline,
         onRendered = onComplete
     )
+}
+
+@Composable
+fun InlineRichLine(
+    parts: List<InlinePart>,
+    color: Color = Gray600,
+    fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    fontWeight: FontWeight = FontWeight.Normal,
+    lineHeight: androidx.compose.ui.unit.TextUnit = 22.sp,
+    onComplete: () -> Unit = {}
+) {
+    LaunchedEffect(parts) {
+        onComplete()
+    }
+
+    val renderedText = remember(parts) {
+        buildString {
+            parts.forEach { part ->
+                when (part) {
+                    is InlinePart.Text -> append(part.text)
+                    is InlinePart.Formula -> append(renderInlineFormula(part.latex))
+                }
+            }
+        }
+    }
+
+    Text(
+        text = renderedText,
+        color = color,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        lineHeight = lineHeight,
+        modifier = Modifier.fillMaxWidth(),
+        softWrap = true
+    )
+}
+
+private fun renderInlineFormula(latex: String): String {
+    var text = latex
+
+    text = text.trim()
+    text = text.removePrefix("$$").removeSuffix("$$").trim()
+    text = text.removePrefix("\\[").removeSuffix("\\]").trim()
+    text = text.removePrefix("\\(").removeSuffix("\\)").trim()
+    text = text.removePrefix("$").removeSuffix("$").trim()
+
+    val greekMap = linkedMapOf(
+        "\\alpha" to "α",
+        "\\beta" to "β",
+        "\\gamma" to "γ",
+        "\\delta" to "δ",
+        "\\epsilon" to "ε",
+        "\\theta" to "θ",
+        "\\lambda" to "λ",
+        "\\mu" to "μ",
+        "\\pi" to "π",
+        "\\sigma" to "σ",
+        "\\tau" to "τ",
+        "\\phi" to "φ",
+        "\\psi" to "ψ",
+        "\\omega" to "ω",
+        "\\Delta" to "Δ",
+        "\\Theta" to "Θ",
+        "\\Pi" to "Π",
+        "\\Sigma" to "Σ",
+        "\\Phi" to "Φ",
+        "\\Psi" to "Ψ",
+        "\\Omega" to "Ω"
+    )
+    greekMap.forEach { (latexName, unicode) ->
+        text = text.replace(latexName, unicode)
+    }
+
+    val plainCommands = linkedMapOf(
+        "\\sin" to "sin",
+        "\\cos" to "cos",
+        "\\tan" to "tan",
+        "\\cot" to "cot",
+        "\\sec" to "sec",
+        "\\csc" to "csc",
+        "\\log" to "log",
+        "\\ln" to "ln",
+        "\\lim" to "lim",
+        "\\max" to "max",
+        "\\min" to "min",
+        "\\to" to "→",
+        "\\rightarrow" to "→",
+        "\\leftarrow" to "←",
+        "\\leftrightarrow" to "↔",
+        "\\cdot" to "·",
+        "\\times" to "×",
+        "\\pm" to "±",
+        "\\leq" to "≤",
+        "\\geq" to "≥",
+        "\\neq" to "≠"
+    )
+    plainCommands.forEach { (latexName, unicode) ->
+        text = text.replace(latexName, unicode)
+    }
+
+    repeat(3) {
+        text = text.replace(
+            Regex("""\\frac\{([^{}]+)\}\{([^{}]+)\}""")
+        ) { match ->
+            val numerator = match.groupValues[1].trim()
+            val denominator = match.groupValues[2].trim()
+            "($numerator/$denominator)"
+        }
+        text = text.replace(
+            Regex("""\\sqrt\{([^{}]+)\}""")
+        ) { match ->
+            "√${match.groupValues[1].trim()}"
+        }
+    }
+
+    text = text.replace(
+        Regex("""\\sqrt\s*([0-9a-zA-Zα-ωΑ-Ω]+)""")
+    ) { match ->
+        "√${match.groupValues[1].trim()}"
+    }
+
+    text = text.replace(Regex("""\^\{?([0-9a-zA-Z]+)\}?""")) { match ->
+        match.groupValues[1].map { toSuperscriptChar(it) }.joinToString("")
+    }
+    text = text.replace(Regex("""_\{?([0-9a-zA-Z]+)\}?""")) { match ->
+        match.groupValues[1].map { toSubscriptChar(it) }.joinToString("")
+    }
+
+    text = text.replace("\\left(", "(").replace("\\right)", ")")
+    text = text.replace("\\left[", "[").replace("\\right]", "]")
+    text = text.replace("\\left\\{", "{").replace("\\right\\}", "}")
+    text = text.replace("\\,", " ")
+    text = text.replace("\\;", " ")
+    text = text.replace("\\!", "")
+    text = text.replace("\\ ", " ")
+    text = text.replace(Regex("""\\([a-zA-Z]+)"""), "$1")
+    text = text.replace("{", "").replace("}", "")
+    text = text.replace(Regex("""\s+"""), " ").trim()
+
+    return text
+}
+
+private fun toSuperscriptChar(ch: Char): Char = when (ch) {
+    '0' -> '⁰'
+    '1' -> '¹'
+    '2' -> '²'
+    '3' -> '³'
+    '4' -> '⁴'
+    '5' -> '⁵'
+    '6' -> '⁶'
+    '7' -> '⁷'
+    '8' -> '⁸'
+    '9' -> '⁹'
+    'a' -> 'ᵃ'
+    'b' -> 'ᵇ'
+    'c' -> 'ᶜ'
+    'd' -> 'ᵈ'
+    'e' -> 'ᵉ'
+    'f' -> 'ᶠ'
+    'g' -> 'ᵍ'
+    'h' -> 'ʰ'
+    'i' -> 'ⁱ'
+    'j' -> 'ʲ'
+    'k' -> 'ᵏ'
+    'l' -> 'ˡ'
+    'm' -> 'ᵐ'
+    'n' -> 'ⁿ'
+    'o' -> 'ᵒ'
+    'p' -> 'ᵖ'
+    'r' -> 'ʳ'
+    's' -> 'ˢ'
+    't' -> 'ᵗ'
+    'u' -> 'ᵘ'
+    'v' -> 'ᵛ'
+    'w' -> 'ʷ'
+    'x' -> 'ˣ'
+    'y' -> 'ʸ'
+    'z' -> 'ᶻ'
+    else -> ch
+}
+
+private fun toSubscriptChar(ch: Char): Char = when (ch) {
+    '0' -> '₀'
+    '1' -> '₁'
+    '2' -> '₂'
+    '3' -> '₃'
+    '4' -> '₄'
+    '5' -> '₅'
+    '6' -> '₆'
+    '7' -> '₇'
+    '8' -> '₈'
+    '9' -> '₉'
+    'a' -> 'ₐ'
+    'e' -> 'ₑ'
+    'h' -> 'ₕ'
+    'i' -> 'ᵢ'
+    'j' -> 'ⱼ'
+    'k' -> 'ₖ'
+    'l' -> 'ₗ'
+    'm' -> 'ₘ'
+    'n' -> 'ₙ'
+    'o' -> 'ₒ'
+    'p' -> 'ₚ'
+    'r' -> 'ᵣ'
+    's' -> 'ₛ'
+    't' -> 'ₜ'
+    'u' -> 'ᵤ'
+    'v' -> 'ᵥ'
+    'x' -> 'ₓ'
+    else -> ch
 }
 
 // 힌트/안내 박스 (부드러운 파란색)
@@ -185,12 +413,19 @@ fun SectionLabel(number: String, title: String) {
 private fun getExplanationDataForLevel(level: String): ExplanationData {
     return when (level) {
         "초급" -> ExplanationData(
+            conceptItems = listOf(
+                ContentItem.Text("이 문제는 합성함수와 삼각함수가 함께 나온 문제예요."),
+                ContentItem.Text("처음에는 식을 억지로 전개하지 말고, 안쪽 식의 구조와 특수값 대입부터 보는 것이 좋아요."),
+                ContentItem.Hint("핵심 개념: 합성함수의 미분, 삼각함수의 주기, 극대점 개수 세기")
+            ),
+            section1Title = "문제 리뷰",
             section1 = listOf(
                 ContentItem.Text("안녕하세요! 이 문제를 함께 풀어볼게요. 먼저 문제를 천천히 살펴봅시다."),
                 ContentItem.Text("이 문제는 삼각함수가 포함된 합성함수 형태예요. 합성함수란 함수 안에 또 다른 함수가 들어있는 것을 말해요."),
                 ContentItem.Text("sin(ax + b + sin x)처럼 sin 안에 또 다른 sin이 들어있죠? 이런 문제는 한 번에 풀려고 하면 어려워요."),
                 ContentItem.Hint("핵심 전략: 먼저 특별한 x값(0, 2π 등)을 대입해서 a, b의 값을 찾고, 그 다음에 극대점을 찾는 순서로 풀어요!")
             ),
+            section2Title = "문제 해석",
             section2 = listOf(
                 ContentItem.Text("(가) 조건부터 살펴볼게요. x = 0을 넣으면 어떻게 될까요?"),
                 ContentItem.Text("sin 0 = 0이므로, 안쪽 식에서 sin x 부분이 0이 되어요."),
@@ -206,6 +441,7 @@ private fun getExplanationDataForLevel(level: String): ExplanationData {
                 ContentItem.Text("1 ≤ a ≤ 2 조건에서 a = 1, 3/2, 2가 가능해요."),
                 ContentItem.Hint("(나) 조건으로 후보를 걸러내면 a = 3/2, b = -3π만 남아요!")
             ),
+            stepsTitle = "문제 풀이",
             steps = listOf(
                 "도함수 구하기" to listOf(
                     ContentItem.Text("f(x) = sin(ax + b + sin x)의 도함수를 구해볼게요."),
@@ -237,12 +473,15 @@ private fun getExplanationDataForLevel(level: String): ExplanationData {
         )
 
         "중급" -> ExplanationData(
+            conceptItems = emptyList(),
+            section1Title = "문제 리뷰",
             section1 = listOf(
                 ContentItem.Text("이 문제는 처음 보면 삼각함수 안에 또 삼각함수가 들어 있는 합성함수 형태예요. 이런 문제는 식을 무작정 전개하려고 하면 오히려 길이 꼬이기 쉽습니다."),
                 ContentItem.Text("그래서 먼저 겉에 있는 sin과 안쪽 식 ax + b + sin x를 분리해서 보는 게 좋아요."),
                 ContentItem.Text("또 눈에 띄는 건 0, 2π, 4π 같은 삼각함수의 주기와 딱 맞는 값들이 계속 나온다는 점입니다."),
                 ContentItem.Hint("먼저 특수한 x값들을 넣어서 a, b의 후보를 줄이고, 도함수 조건으로 후보를 걸러낸 뒤, 극대점의 개수와 가장 작은 극대점 α₁을 찾는 흐름으로 진행합니다.")
             ),
+            section2Title = "문제 해석",
             section2 = listOf(
                 ContentItem.Text("먼저 (가) 조건을 볼게요. x = 0, x = 2π를 준 건 삼각함수의 특수값을 이용해서 a, b를 강하게 묶으라는 신호입니다."),
                 ContentItem.Text("x = 0을 넣으면 안쪽 식은 b만 남습니다."),
@@ -256,6 +495,7 @@ private fun getExplanationDataForLevel(level: String): ExplanationData {
                 ContentItem.Formula("f'(x) = \\cos(ax + b + \\sin x) \\cdot (a + \\cos x)"),
                 ContentItem.Hint("분석 결과, 짝수 후보는 모두 탈락하고 p = 3만 남습니다. 따라서 a = 3/2, b = −3π로 확정됩니다.")
             ),
+            stepsTitle = "문제 풀이",
             steps = listOf(
                 "확정된 값 대입" to listOf(
                     ContentItem.Text("a = 3/2, b = −3π이므로 도함수는:"),
@@ -293,10 +533,13 @@ private fun getExplanationDataForLevel(level: String): ExplanationData {
         )
 
         "고급" -> ExplanationData(
+            conceptItems = emptyList(),
+            section1Title = "핵심포인트",
             section1 = listOf(
                 ContentItem.Text("합성함수 f(x) = sin(ax + b + sin x)에서 특수값 대입으로 a, b를 결정하고, 극대점 개수를 구하는 문제입니다."),
                 ContentItem.Hint("접근: (가)로 a, b 후보 → (나)로 필터링 → 극대점 개수 및 α₁ 계산")
             ),
+            section2Title = "적용점",
             section2 = listOf(
                 ContentItem.Text("(가) 조건에서:"),
                 ContentItem.Formula("f(0) = \\sin b = 0 \\;\\Rightarrow\\; b = n\\pi"),
@@ -306,14 +549,13 @@ private fun getExplanationDataForLevel(level: String): ExplanationData {
                 ContentItem.Formula("f'(x) = \\cos(ax + b + \\sin x)(a + \\cos x)"),
                 ContentItem.Hint("(나) 조건 검증 시 a = 3/2, b = −3π만 만족")
             ),
+            stepsTitle = "실전 적용",
             steps = listOf(
-                "극대점 분석" to listOf(
-                    ContentItem.Text("g(x) = 3x/2 − 3π + sin x로 치환"),
+                "핵심 정리" to listOf(
+                    ContentItem.Text("g(x) = 3x/2 − 3π + sin x로 치환하면 안쪽 함수가 단조 증가합니다."),
                     ContentItem.Formula("g(0) = -3\\pi, \\; g(4\\pi) = 3\\pi, \\; g'(x) > 0"),
-                    ContentItem.Text("cos(g(x)) = 0인 점: g(x) = ±π/2, ±3π/2, ±5π/2"),
-                    ContentItem.Text("극대: g(x) = −3π/2, π/2, 5π/2 → n = 3")
-                ),
-                "최종 계산" to listOf(
+                    ContentItem.Text("따라서 cos(g(x)) = 0인 지점을 세면 극대점 개수가 바로 나옵니다."),
+                    ContentItem.Text("극대는 g(x) = −3π/2, π/2, 5π/2에서 생기므로 n = 3입니다."),
                     ContentItem.Formula("g(\\alpha_1) = -\\frac{3\\pi}{2} \\;\\Rightarrow\\; \\alpha_1 = \\pi"),
                     ContentItem.Formula("n\\alpha_1 - ab = 3\\pi + \\frac{9\\pi}{2} = \\frac{15\\pi}{2}"),
                     ContentItem.Formula("p = 2, \\; q = 15"),
@@ -362,19 +604,29 @@ fun ExplanationScreen(
         }
 
         is ExplanationUiState.Success -> {
-            ExplanationContentScreen(
-                explanationLevel = explanationLevel,
-                response = state.response,
-                currentIndex = currentIndex,
-                onCurrentIndexChange = { currentIndex = it },
-                onReset = onReset
-            )
+            if (explanationLevel == "고급") {
+                AdvancedExplanationContentScreen(
+                    explanationLevel = explanationLevel,
+                    response = state.response,
+                    currentIndex = currentIndex,
+                    onCurrentIndexChange = { currentIndex = it },
+                    onReset = onReset
+                )
+            } else {
+                StandardExplanationContentScreen(
+                    explanationLevel = explanationLevel,
+                    response = state.response,
+                    currentIndex = currentIndex,
+                    onCurrentIndexChange = { currentIndex = it },
+                    onReset = onReset
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ExplanationContentScreen(
+private fun StandardExplanationContentScreen(
     explanationLevel: String,
     response: ExplanationResponse,
     currentIndex: Int,
@@ -382,14 +634,12 @@ private fun ExplanationContentScreen(
     onReset: () -> Unit
 ) {
     val explanationData = remember(response) {
-        response.toExplanationData()
+        response.toExplanationData(explanationLevel)
     }
 
-    // 인덱스 계산
-    val section1End = explanationData.section1.size
+    val section1End = explanationData.conceptItems.size + explanationData.section1.size
     val section2Start = section1End
     val section2End = section2Start + 1 + explanationData.section2.size
-
     val stepIndices = remember(explanationData) {
         val indices = mutableListOf<Pair<Int, Int>>()
         var currentStart = section2End
@@ -456,7 +706,29 @@ private fun ExplanationContentScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // [1. 문제 리뷰] - 흰색 카드
+            if (explanationData.conceptItems.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        SectionContent(
+                            number = "0",
+                            title = "개념설명",
+                            items = explanationData.conceptItems,
+                            startIndex = 0,
+                            currentIndex = currentIndex,
+                            onItemComplete = { onCurrentIndexChange(currentIndex + 1) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // [1. 문제 리뷰 / 핵심포인트] - 흰색 카드
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -466,9 +738,13 @@ private fun ExplanationContentScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     SectionContent(
                         number = "1",
-                        title = "문제 리뷰",
+                        title = explanationData.section1Title,
                         items = explanationData.section1,
-                        startIndex = 0,
+                        startIndex = if (explanationData.conceptItems.isNotEmpty()) {
+                            explanationData.conceptItems.size
+                        } else {
+                            0
+                        },
                         currentIndex = currentIndex,
                         onItemComplete = { onCurrentIndexChange(currentIndex + 1) }
                     )
@@ -491,7 +767,7 @@ private fun ExplanationContentScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         SectionContent(
                             number = "2",
-                            title = "조건 해석",
+                            title = explanationData.section2Title,
                             items = explanationData.section2,
                             startIndex = section2Start + 1,
                             currentIndex = currentIndex,
@@ -504,7 +780,7 @@ private fun ExplanationContentScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // [3. 문제 풀이] - 흰색 카드
+            // [3. 해설 단계] - 흰색 카드
             AnimatedVisibility(
                 visible = currentIndex >= section2End,
                 enter = fadeIn()
@@ -516,6 +792,10 @@ private fun ExplanationContentScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        if (explanationData.stepsTitle.isNotBlank()) {
+                            SectionLabel(number = "3", title = explanationData.stepsTitle)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
                         StepsContent(
                             steps = explanationData.steps,
                             stepIndices = stepIndices,
@@ -527,6 +807,154 @@ private fun ExplanationContentScreen(
             }
 
             Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun AdvancedExplanationContentScreen(
+    explanationLevel: String,
+    response: ExplanationResponse,
+    currentIndex: Int,
+    onCurrentIndexChange: (Int) -> Unit,
+    onReset: () -> Unit
+) {
+    val explanationData = remember(response) {
+        response.toExplanationData(explanationLevel)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Blue50)
+            .statusBarsPadding()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledIconButton(
+                onClick = onReset,
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = Color.White,
+                    contentColor = Gray600
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "뒤로가기",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Blue500.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    text = "$explanationLevel 해설",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Blue600,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    StaticSubsection(title = explanationData.section1Title, items = explanationData.section1)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Gray200, thickness = 0.5.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StaticSubsection(title = explanationData.section2Title, items = explanationData.section2)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Gray200, thickness = 0.5.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StaticSubsection(
+                        title = explanationData.stepsTitle,
+                        items = explanationData.steps.firstOrNull()?.second.orEmpty()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun StaticSubsection(
+    title: String,
+    items: List<ContentItem>
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Blue900,
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
+
+        items.forEachIndexed { index, item ->
+            if (index > 0) {
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+            when (item) {
+                is ContentItem.Text -> {
+                    Text(
+                        text = item.text,
+                        color = Gray600,
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp
+                    )
+                }
+                is ContentItem.Formula -> {
+                    FormulaBox(
+                        formula = item.latex,
+                        displayMode = item.display
+                    )
+                }
+                is ContentItem.RichLine -> {
+                    InlineRichLine(
+                        parts = item.parts
+                    )
+                }
+                is ContentItem.Hint -> {
+                    HintBox(
+                        text = item.text
+                    )
+                }
+                is ContentItem.Answer -> {
+                    Text(
+                        text = item.text,
+                        color = Gray600,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 22.sp
+                    )
+                }
+            }
         }
     }
 }
@@ -646,73 +1074,280 @@ private fun ExplanationErrorScreen(
     }
 }
 
-private fun ExplanationResponse.toExplanationData(): ExplanationData {
+private fun ExplanationResponse.toExplanationData(level: String): ExplanationData {
     val reviewItems = problemReview.toContentItems()
         .ifEmpty { listOf(ContentItem.Text("문제 리뷰가 비어 있습니다.")) }
     val conditionItems = conditionInterpretation.toContentItems()
         .ifEmpty { listOf(ContentItem.Text("조건 해석이 비어 있습니다.")) }
     val solutionItems = solution.toContentItems().toMutableList()
+    val keyPointItems = keyPoints.toContentItems().ifEmpty { reviewItems }
+    val approachItems = approachPerspectives.toContentItems().ifEmpty { conditionItems }
+    val transferableItems = transferableInsight.toContentItems().ifEmpty { solutionItems }
 
     if (answer.isNotBlank() && solutionItems.none { it is ContentItem.Answer }) {
         solutionItems.add(ContentItem.Answer("답: $answer"))
     }
 
-    return ExplanationData(
-        section1 = reviewItems,
-        section2 = conditionItems,
-        steps = listOf("AI 해설" to solutionItems.ifEmpty {
-            listOf(ContentItem.Text("문제 풀이가 비어 있습니다."))
-        })
-    )
+    val baseSolutionItems = solutionItems.ifEmpty {
+        listOf(ContentItem.Text("문제 풀이가 비어 있습니다."))
+    }
+
+    return when (level) {
+        "초급" -> ExplanationData(
+            conceptItems = listOf(
+                ContentItem.Text("이 문제는 합성함수와 삼각함수가 함께 나온 문제예요."),
+                ContentItem.Text("처음에는 식을 억지로 전개하지 말고, 안쪽 식의 구조와 특수값 대입부터 보는 것이 좋아요."),
+                ContentItem.Hint("핵심 개념: 합성함수의 미분, 삼각함수의 주기, 극대점 개수 세기")
+            ),
+            section1Title = "문제 리뷰",
+            section1 = reviewItems,
+            section2Title = "문제 해석",
+            section2 = conditionItems,
+            stepsTitle = "문제 풀이",
+            steps = listOf("도함수와 극대점" to baseSolutionItems)
+        )
+        "고급" -> ExplanationData(
+            conceptItems = emptyList(),
+            section1Title = "핵심 포인트",
+            section1 = keyPointItems,
+            section2Title = "적용점",
+            section2 = approachItems,
+            stepsTitle = "최종 정리",
+            steps = listOf("최종 정리" to transferableItems)
+        )
+        else -> ExplanationData(
+            conceptItems = emptyList(),
+            section1Title = "문제 리뷰",
+            section1 = reviewItems,
+            section2Title = "문제 해석",
+            section2 = conditionItems,
+            stepsTitle = "문제 풀이",
+            steps = listOf("문제 풀이" to baseSolutionItems)
+        )
+    }
 }
 
 private fun String.toContentItems(): List<ContentItem> {
     val normalized = replace("\\n", "\n").trim()
     if (normalized.isBlank()) return emptyList()
 
-    val items = mutableListOf<ContentItem>()
+    val parsedItems = mutableListOf<ContentItem>()
     normalized.lines()
         .map { it.trim() }
         .filter { it.isNotBlank() }
         .forEach { line ->
             val answerLine = line.startsWith("답:")
-            parseLatexLine(line).forEach { item ->
-                if (answerLine && item is ContentItem.Text) {
-                    items.add(ContentItem.Answer(item.text))
-                } else {
-                    items.add(item)
+            when {
+                answerLine -> parsedItems.add(ContentItem.Answer(line))
+                else -> {
+                    parsedItems.add(parseLineContent(line))
                 }
             }
         }
-    return items
+
+    val mergedItems = mutableListOf<ContentItem>()
+    var pendingInlineParts: MutableList<InlinePart>? = null
+
+    fun flushPendingIfNeeded() {
+        val pending = pendingInlineParts ?: return
+        if (pending.isNotEmpty()) {
+            mergedItems.add(ContentItem.RichLine(pending.toList()))
+        }
+        pendingInlineParts = null
+    }
+
+    fun isShortInlineFormulaLine(item: ContentItem): Boolean {
+        return item is ContentItem.RichLine &&
+            item.parts.size == 1 &&
+            item.parts[0] is InlinePart.Formula
+    }
+
+    fun appendInlinePartToLast(inlinePart: InlinePart) {
+        val previous = mergedItems.lastOrNull()
+        when (previous) {
+            is ContentItem.Text -> {
+                mergedItems[mergedItems.lastIndex] = ContentItem.RichLine(
+                    listOf(
+                        InlinePart.Text(previous.text),
+                        InlinePart.Text(" "),
+                        inlinePart
+                    )
+                )
+            }
+
+            is ContentItem.RichLine -> {
+                mergedItems[mergedItems.lastIndex] = previous.copy(
+                    parts = previous.parts + InlinePart.Text(" ") + inlinePart
+                )
+            }
+
+            else -> {
+                val pending = pendingInlineParts ?: mutableListOf()
+                pending.add(inlinePart)
+                pendingInlineParts = pending
+            }
+        }
+    }
+
+    parsedItems.forEach { item ->
+        when (item) {
+            is ContentItem.Answer -> {
+                flushPendingIfNeeded()
+                mergedItems.add(item)
+            }
+
+            is ContentItem.Formula -> {
+                flushPendingIfNeeded()
+                mergedItems.add(item)
+            }
+
+            is ContentItem.Text -> {
+                if (pendingInlineParts != null && pendingInlineParts!!.isNotEmpty()) {
+                    val pending = pendingInlineParts!!.toList()
+                    pendingInlineParts = null
+                    mergedItems.add(
+                        ContentItem.RichLine(
+                            pending + InlinePart.Text(" ") + InlinePart.Text(item.text)
+                        )
+                    )
+                } else {
+                    mergedItems.add(item)
+                }
+            }
+
+            is ContentItem.Hint -> {
+                flushPendingIfNeeded()
+                mergedItems.add(item)
+            }
+
+            is ContentItem.RichLine -> {
+                if (item.parts.size == 1 && item.parts[0] is InlinePart.Formula) {
+                    val formula = (item.parts[0] as InlinePart.Formula).latex
+                    if (shouldDisplayFormula(formula, formula)) {
+                        flushPendingIfNeeded()
+                        mergedItems.add(ContentItem.Formula(formula, display = true))
+                    } else {
+                        val pending = pendingInlineParts
+                        if (pending != null && pending.isNotEmpty()) {
+                            mergedItems.add(
+                                ContentItem.RichLine(
+                                    pending + InlinePart.Text(" ") + item.parts
+                                )
+                            )
+                            pendingInlineParts = null
+                        } else {
+                            appendInlinePartToLast(item.parts[0])
+                        }
+                    }
+                } else {
+                    if (pendingInlineParts != null && pendingInlineParts!!.isNotEmpty()) {
+                        val pending = pendingInlineParts!!.toList()
+                        pendingInlineParts = null
+                        mergedItems.add(
+                            ContentItem.RichLine(
+                                pending + InlinePart.Text(" ") + item.parts
+                            )
+                        )
+                    } else {
+                        mergedItems.add(item)
+                    }
+                }
+            }
+        }
+    }
+
+    flushPendingIfNeeded()
+    return mergedItems
 }
 
-private fun parseLatexLine(line: String): List<ContentItem> {
-    val regex = Regex("""\$(.+?)\$""")
-    val items = mutableListOf<ContentItem>()
+private fun parseLineContent(line: String): ContentItem {
+    val trimmed = line.trim()
+    if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4) {
+        val blockFormula = trimmed.removePrefix("$$").removeSuffix("$$").trim()
+        if (blockFormula.isNotBlank()) {
+            return ContentItem.Formula(blockFormula, display = true)
+        }
+    }
+
+    if (trimmed.startsWith("\\[") && trimmed.endsWith("\\]") && trimmed.length > 4) {
+        val blockFormula = trimmed.removePrefix("\\[").removeSuffix("\\]").trim()
+        if (blockFormula.isNotBlank()) {
+            return ContentItem.Formula(blockFormula, display = true)
+        }
+    }
+
+    if (trimmed.startsWith("\\(") && trimmed.endsWith("\\)") && trimmed.length > 4) {
+        val inlineFormula = trimmed.removePrefix("\\(").removeSuffix("\\)").trim()
+        if (inlineFormula.isNotBlank()) {
+            return ContentItem.RichLine(listOf(InlinePart.Formula(inlineFormula)))
+        }
+    }
+
+    val regex = Regex("""\$\$(.+?)\$\$|\$(.+?)\$""")
+    val parts = mutableListOf<InlinePart>()
     var lastIndex = 0
 
     regex.findAll(line).forEach { match ->
-        val textBefore = line.substring(lastIndex, match.range.first).trim()
+        val textBefore = line.substring(lastIndex, match.range.first)
         if (textBefore.isNotBlank()) {
-            items.add(ContentItem.Text(textBefore))
+            parts.add(InlinePart.Text(textBefore))
         }
 
-        val formula = match.groupValues[1].trim()
+        val formula = (match.groupValues[1].ifBlank { match.groupValues[2] }).trim()
         if (formula.isNotBlank()) {
-            items.add(ContentItem.Formula(formula))
+            if (shouldDisplayFormula(formula, line) && parts.isEmpty() && line.trim() == match.value.trim()) {
+                return ContentItem.Formula(formula, display = true)
+            }
+            parts.add(InlinePart.Formula(formula))
         }
         lastIndex = match.range.last + 1
     }
 
-    val remainingText = line.substring(lastIndex).trim()
+    val remainingText = line.substring(lastIndex)
     if (remainingText.isNotBlank()) {
-        items.add(ContentItem.Text(remainingText))
+        parts.add(InlinePart.Text(remainingText))
     }
 
-    return items.ifEmpty { listOf(ContentItem.Text(line)) }
+    if (parts.isEmpty()) {
+        return ContentItem.Text(line)
+    }
+
+    if (parts.size == 1 && parts[0] is InlinePart.Formula) {
+        val formula = (parts[0] as InlinePart.Formula).latex
+        if (shouldDisplayFormula(formula, line)) {
+            return ContentItem.Formula(formula, display = true)
+        }
+    }
+
+    if (parts.size == 1 && parts[0] is InlinePart.Text) {
+        return ContentItem.Text((parts[0] as InlinePart.Text).text.trim())
+    }
+
+    return ContentItem.RichLine(parts)
 }
 
+private fun shouldDisplayFormula(formula: String, line: String): Boolean {
+    val trimmedFormula = formula.trim()
+    val displayMarkers = listOf("\\frac", "\\sum", "\\int", "\\lim", "\\prod", "\\begin", "\\displaystyle")
+    if (displayMarkers.any { trimmedFormula.contains(it) }) {
+        return true
+    }
+
+    if (trimmedFormula.length >= 28) {
+        return true
+    }
+
+    val relationalMarkers = listOf("=", "\\Rightarrow", "\\Leftrightarrow")
+    if (relationalMarkers.any { trimmedFormula.contains(it) } && trimmedFormula.length >= 20) {
+        return true
+    }
+
+    if (trimmedFormula.count { it == '=' } >= 2) {
+        return true
+    }
+
+    return false
+}
 @Composable
 private fun SectionContent(
     number: String,
@@ -753,6 +1388,13 @@ private fun SectionContent(
                         is ContentItem.Formula -> {
                             FormulaBox(
                                 formula = item.latex,
+                                displayMode = item.display,
+                                onComplete = onItemComplete
+                            )
+                        }
+                        is ContentItem.RichLine -> {
+                            InlineRichLine(
+                                parts = item.parts,
                                 onComplete = onItemComplete
                             )
                         }
@@ -783,11 +1425,6 @@ private fun StepsContent(
     onItemComplete: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 섹션 라벨 (번호만 파란 박스)
-        SectionLabel(number = "3", title = "문제 풀이")
-
-        Spacer(modifier = Modifier.height(12.dp))
-
         // Steps
         steps.forEachIndexed { stepIdx, (stepTitle, stepItems) ->
             val (stepStart, _) = stepIndices[stepIdx]
@@ -812,7 +1449,11 @@ private fun StepsContent(
 
                     // STEP 라벨만 표시 (숫자 배지 제거)
                     Text(
-                        text = "STEP ${stepIdx + 1}. $stepTitle",
+                        text = if (stepTitle.isBlank()) {
+                            "STEP ${stepIdx + 1}"
+                        } else {
+                            "STEP ${stepIdx + 1}. $stepTitle"
+                        },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Blue600,
@@ -838,6 +1479,13 @@ private fun StepsContent(
                                 is ContentItem.Formula -> {
                                     FormulaBox(
                                         formula = item.latex,
+                                        displayMode = item.display,
+                                        onComplete = onItemComplete
+                                    )
+                                }
+                                is ContentItem.RichLine -> {
+                                    InlineRichLine(
+                                        parts = item.parts,
                                         onComplete = onItemComplete
                                     )
                                 }

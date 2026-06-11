@@ -1,10 +1,12 @@
 """
 LangGraph State Schema for Math Explanation Generation
 
-Updated Architecture (3 Nodes):
-1. Node 1: OCR + Routing (통합)
-2. Node 2: Explanation Generation (3회 병렬 호출)
-3. Node 3: Hard Gate (검증 & 선택)
+Updated Architecture (5 Stages):
+1. Node 1: OCR extraction
+2. Node 2: Difficulty routing
+3. Node 3: Model selection
+4. Node 4: Explanation generation (3회 병렬 호출)
+5. Node 5: Hard Gate (검증 & 선택)
 """
 from typing import TypedDict, Literal, Optional, List, Dict, Any
 from dataclasses import dataclass
@@ -25,13 +27,24 @@ class MathExplanationState(TypedDict):
     trace_metadata: Dict[str, Any]                       # LangSmith 추적 메타데이터
 
     # ═══════════════════════════════════════════════════════════════
-    # Node 1: OCR + 라우팅 결과
+    # Node 1: OCR 결과
     # ═══════════════════════════════════════════════════════════════
     problem_text: str                                    # 추출된 문제 텍스트
     question_type: Literal["objective", "subjective"]    # 문제 유형 (OCR 판단)
     subject: Literal["확률과통계", "미적분", "기하"]      # 과목
     difficulty: Literal["쉬움", "보통", "어려움", "킬러"]  # 난이도
     unit: str                                            # 단원
+    curriculum_area: str                                 # 라우터 입력용 영역
+    major_topics: List[str]                              # 라우터 입력용 주제
+
+    # ═══════════════════════════════════════════════════════════════
+    # Node 2: 난이도 라우팅 + 모델 선택 결과
+    # ═══════════════════════════════════════════════════════════════
+    routing_difficulty: Literal["easy", "medium", "hard", "killer"]
+    routing_confidence: float
+    difficulty_evidence: List[str]
+    borderline_with: str
+    borderline_reason: str
     selected_model: str                                  # 라우팅된 모델명
 
     # ═══════════════════════════════════════════════════════════════
@@ -71,6 +84,7 @@ class MathExplanationState(TypedDict):
     # ═══════════════════════════════════════════════════════════════
     # 메타 정보
     # ═══════════════════════════════════════════════════════════════
+    stage_timings: Dict[str, float]
     is_complete: bool
     error_message: Optional[str]
 
@@ -135,6 +149,13 @@ def create_initial_state(
         subject="미적분",
         difficulty="보통",
         unit="",
+        curriculum_area="",
+        major_topics=[],
+        routing_difficulty="medium",
+        routing_confidence=0.0,
+        difficulty_evidence=[],
+        borderline_with="none",
+        borderline_reason="",
         selected_model="",
 
         # 해설 생성 결과 (초기화)
@@ -153,6 +174,7 @@ def create_initial_state(
         answer="",
 
         # 메타 정보
+        stage_timings={},
         is_complete=False,
         error_message=None
     )

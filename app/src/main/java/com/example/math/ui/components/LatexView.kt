@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +26,8 @@ import java.net.URLEncoder
 @Composable
 fun LatexFormula(
     latex: String,
+    displayMode: Boolean = false,
+    inline: Boolean = false,
     modifier: Modifier = Modifier,
     onRendered: () -> Unit = {}
 ) {
@@ -32,20 +35,34 @@ fun LatexFormula(
     val encodedLatex = remember(latex) {
         URLEncoder.encode(latex, "UTF-8")
     }
+    val encodedDisplayMode = if (displayMode) "1" else "0"
+
+    val containerModifier = if (inline) {
+        modifier
+            .wrapContentWidth()
+            .wrapContentHeight()
+            .padding(horizontal = 0.dp, vertical = 0.dp)
+    } else {
+        modifier
+            .fillMaxWidth()
+            .padding(vertical = if (displayMode) 6.dp else 2.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Gray100)
+    }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Gray100),
-        contentAlignment = Alignment.Center
+        modifier = containerModifier,
+        contentAlignment = if (inline) Alignment.CenterStart else Alignment.Center
     ) {
         AndroidView(
             modifier = Modifier
-                .fillMaxWidth()
+                .then(if (inline) Modifier.wrapContentWidth() else Modifier.fillMaxWidth())
                 .wrapContentHeight()
-                .defaultMinSize(minHeight = 36.dp),
+                .defaultMinSize(minHeight = when {
+                    displayMode -> 42.dp
+                    inline -> 0.dp
+                    else -> 26.dp
+                }),
             factory = { context ->
                 WebView(context).apply {
                     settings.apply {
@@ -68,11 +85,11 @@ fun LatexFormula(
                         }
                     }
 
-                    loadUrl("file:///android_asset/katex.html?latex=$encodedLatex")
+                    loadUrl("file:///android_asset/katex.html?latex=$encodedLatex&display=$encodedDisplayMode")
                 }
             },
             update = { webView ->
-                webView.loadUrl("file:///android_asset/katex.html?latex=$encodedLatex")
+                webView.loadUrl("file:///android_asset/katex.html?latex=$encodedLatex&display=$encodedDisplayMode")
             }
         )
     }

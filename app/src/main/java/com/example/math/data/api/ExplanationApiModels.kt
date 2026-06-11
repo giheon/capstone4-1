@@ -34,6 +34,9 @@ data class ExplanationResponse(
     val problemReview: String,
     val conditionInterpretation: String,
     val solution: String,
+    val keyPoints: String,
+    val approachPerspectives: String,
+    val transferableInsight: String,
     val answer: String,
     val majorityAnswer: String,
     val isComplete: Boolean
@@ -50,6 +53,9 @@ data class ExplanationResponse(
                 problemReview = json.optString("problem_review"),
                 conditionInterpretation = json.optString("condition_interpretation"),
                 solution = json.optString("solution"),
+                keyPoints = json.optString("key_points"),
+                approachPerspectives = json.optString("approach_perspectives"),
+                transferableInsight = json.optString("transferable_insight"),
                 answer = json.optString("answer"),
                 majorityAnswer = json.optString("majority_answer"),
                 isComplete = json.optBoolean("is_complete")

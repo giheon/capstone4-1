@@ -15,12 +15,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 12px 16px;
+            padding: 0;
         }
         #formula {
             text-align: center;
             color: #4B5563;
-            line-height: 1.4;
+            line-height: 1.25;
+            width: 100%;
+            padding: 8px 12px;
         }
         .katex {
             font-size: 14px;
@@ -29,17 +31,32 @@
         .katex-display {
             margin: 0;
         }
+        body.display-mode #formula {
+            padding: 10px 12px;
+        }
+        body.display-mode .katex {
+            font-size: 16px;
+        }
+        body.inline-mode #formula {
+            padding: 0;
+            width: auto;
+            display: inline-block;
+            line-height: 1.05;
+        }
+        body.inline-mode .katex {
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
     <div id="formula"></div>
     <script>
-        function renderLatex(latex) {
+        function renderLatex(latex, displayMode) {
             var element = document.getElementById('formula');
             try {
                 katex.render(latex, element, {
                     throwOnError: false,
-                    displayMode: false,
+                    displayMode: displayMode,
                     output: 'html'
                 });
             } catch (e) {
@@ -49,8 +66,10 @@
 
         var params = new URLSearchParams(window.location.search);
         var latex = params.get('latex');
+        var displayMode = params.get('display') === '1';
+        document.body.classList.add(displayMode ? 'display-mode' : 'inline-mode');
         if (latex) {
-            renderLatex(decodeURIComponent(latex));
+            renderLatex(decodeURIComponent(latex), displayMode);
         }
     </script>
 </body>

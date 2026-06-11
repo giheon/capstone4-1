@@ -5,8 +5,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -18,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,7 +98,21 @@ private fun CameraContent(
 ) {
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isCapturing by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri == null || isUploading) return@rememberLauncherForActivityResult
+        isUploading = true
+        val base64Image = uriToBase64(context, uri)
+        isUploading = false
+        if (base64Image != null) {
+            onCapture(base64Image)
+        } else {
+            Log.e("CameraUpload", "Failed to convert selected image")
+        }
+    }
 
     // 스캔 라인 애니메이션
     val infiniteTransition = rememberInfiniteTransition(label = "scan")
@@ -207,48 +225,100 @@ private fun CameraContent(
             }
         }
 
-        // 캡처 버튼
-        Button(
-            onClick = {
-                if (!isCapturing) {
-                    isCapturing = true
-                    captureImage(
-                        imageCapture = imageCapture,
-                        executor = cameraExecutor,
-                        onImageCaptured = { base64Image ->
-                            isCapturing = false
-                            onCapture(base64Image)
-                        },
-                        onError = { error ->
-                            isCapturing = false
-                            Log.e("CameraX", "Image capture failed: $error")
-                        }
-                    )
-                }
-            },
-            enabled = !isCapturing,
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 40.dp)
-                .size(80.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isCapturing) Gray300 else Blue500
-            ),
-            contentPadding = PaddingValues(0.dp)
+                .padding(bottom = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (isCapturing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = Color.White,
-                    strokeWidth = 3.dp
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .border(4.dp, Color.White, CircleShape)
-                )
+            Button(
+                onClick = {
+                    if (!isUploading) {
+                        imagePickerLauncher.launch("image/*")
+                    }
+                },
+                enabled = !isUploading,
+                modifier = Modifier
+                    .width(176.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(26.dp),
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Blue600,
+                    disabledContainerColor = Color.White.copy(alpha = 0.75f),
+                    disabledContentColor = Gray500
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 2.dp,
+                    disabledElevation = 0.dp
+                ),
+                contentPadding = PaddingValues(horizontal = 18.dp)
+            ) {
+                if (isUploading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Blue600,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.FileUpload,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Blue600
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "이미지 업로드",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Blue600
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = {
+                    if (!isCapturing) {
+                        isCapturing = true
+                        captureImage(
+                            imageCapture = imageCapture,
+                            executor = cameraExecutor,
+                            onImageCaptured = { base64Image ->
+                                isCapturing = false
+                                onCapture(base64Image)
+                            },
+                            onError = { error ->
+                                isCapturing = false
+                                Log.e("CameraX", "Image capture failed: $error")
+                            }
+                        )
+                    }
+                },
+                enabled = !isCapturing,
+                modifier = Modifier.size(84.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isCapturing) Gray300 else Blue500
+                ),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                if (isCapturing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = Color.White,
+                        strokeWidth = 3.dp
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(66.dp)
+                            .border(4.dp, Color.White, CircleShape)
+                    )
+                }
             }
         }
 
@@ -360,6 +430,18 @@ private fun bitmapToBase64(bitmap: Bitmap): String {
     bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
     val byteArray = outputStream.toByteArray()
     return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+}
+
+private fun uriToBase64(context: Context, uri: Uri): String? {
+    return try {
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val byteArray = inputStream.readBytes()
+            Base64.encodeToString(byteArray, Base64.NO_WRAP)
+        }
+    } catch (e: Exception) {
+        Log.e("CameraUpload", "Failed to read selected image", e)
+        null
+    }
 }
 
 @Composable

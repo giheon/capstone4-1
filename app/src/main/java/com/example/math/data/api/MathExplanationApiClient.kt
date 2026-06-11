@@ -46,7 +46,7 @@ class MathExplanationApiClient(
         private fun defaultClient(): OkHttpClient {
             return OkHttpClient.Builder()
                 .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(180, TimeUnit.SECONDS)
+                .readTimeout(420, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .build()
         }
