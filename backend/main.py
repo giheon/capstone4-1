@@ -129,6 +129,7 @@ class ExplanationResponse(BaseModel):
     selected_model: str  # 사용된 모델
 
     # 최종 해설
+    concept_explanation: List[Dict[str, Any]] = Field(default_factory=list)  # [0. 개념 설명]
     problem_review: List[Dict[str, Any]]  # [1. 문제 리뷰]
     condition_interpretation: List[Dict[str, Any]]  # [2. 조건 해석]
     solution: List[Dict[str, Any]]  # [3. 문제 풀이]
@@ -221,6 +222,7 @@ async def generate_explanation(request: ExplanationRequest):
             borderline_with=result.get("borderline_with", "none"),
             borderline_reason=result.get("borderline_reason", ""),
             selected_model=result.get("selected_model", ""),
+            concept_explanation=result.get("concept_explanation", []),
             problem_review=result.get("problem_review", []),
             condition_interpretation=result.get("condition_interpretation", []),
             solution=result.get("solution", []),
@@ -426,6 +428,7 @@ async def test_mock_explanation(
         "borderline_with": "none",
         "borderline_reason": "",
         "selected_model": "gpt-5.4-nano",
+        "concept_explanation": [],
         "problem_review": [
             {"type": "text", "content": "3차 함수의 극값을 구하는 문제입니다."},
             {"type": "latex", "content": "f'(x)=0"},

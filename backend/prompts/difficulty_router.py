@@ -13,9 +13,8 @@ ROUTING_DIFFICULTY_OUTPUT_SCHEMA = """{
   "routing_difficulty": "easy | medium | hard | killer",
   "selected_model": "gemini-2.5-flash-lite | gpt-5.4-mini | gpt-5.4 | gemini-3-flash-preview",
   "confidence": 0.0,
-  "difficulty_evidence": ["근거 1", "근거 2"],
-  "borderline_with": "none | easy | medium | hard | killer",
-  "borderline_reason": ""
+  "difficulty_evidence": "근거 1",
+  "borderline_with": "none | easy | medium | hard | killer"
 }"""
 
 ROUTING_DIFFICULTY_PROMPT_STATISTICS = f"""너는 수능 수학 확률과 통계 문제를 풀이 모델로 보내기 위한 난이도 라우터다.

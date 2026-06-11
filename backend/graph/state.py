@@ -53,6 +53,7 @@ class MathExplanationState(TypedDict):
     explanation_candidates: List[dict]
     # 각 후보 형식:
     # {
+    #     "concept_explanation": [block, ...],
     #     "problem_review": [block, ...],
     #     "condition_interpretation": [block, ...],
     #     "solution": [block, ...],
@@ -77,6 +78,7 @@ class MathExplanationState(TypedDict):
     # ═══════════════════════════════════════════════════════════════
     # 최종 출력 (LangSmith output 형식과 동일)
     # ═══════════════════════════════════════════════════════════════
+    concept_explanation: List[dict]      # [0. 개념 설명]
     problem_review: List[dict]          # [1. 문제 리뷰]
     condition_interpretation: List[dict] # [2. 조건 해석]
     solution: List[dict]                # [3. 문제 풀이]
@@ -93,6 +95,7 @@ class MathExplanationState(TypedDict):
 @dataclass
 class ExplanationCandidate:
     """해설 후보 데이터 클래스"""
+    concept_explanation: List[dict]
     problem_review: List[dict]
     condition_interpretation: List[dict]
     solution: List[dict]
@@ -102,6 +105,7 @@ class ExplanationCandidate:
 
     def to_dict(self) -> dict:
         return {
+            "concept_explanation": self.concept_explanation,
             "problem_review": self.problem_review,
             "condition_interpretation": self.condition_interpretation,
             "solution": self.solution,
@@ -169,6 +173,7 @@ def create_initial_state(
         selected_explanation={},
 
         # 최종 출력 (초기화)
+        concept_explanation=[],
         problem_review=[],
         condition_interpretation=[],
         solution=[],

@@ -351,7 +351,7 @@ def _normalize_blocks(value: Any) -> List[dict]:
         blocks: List[dict] = []
         for block in value:
             blocks.extend(_normalize_block(block))
-        return _merge_flat_blocks(blocks)
+        return blocks
 
     if isinstance(value, str):
         return _normalize_block(value)
@@ -612,6 +612,7 @@ async def generate_single_explanation(
         )
         result = _parse_jsonish_response(raw_result, stage="ExplanationGeneration")
 
+        concept_explanation = _normalize_blocks(result.get("concept_explanation", []))
         problem_review = _normalize_blocks(result.get("problem_review", []))
         condition_interpretation = _normalize_blocks(
             result.get("condition_interpretation", result.get("condition_analysis", []))
@@ -622,6 +623,7 @@ async def generate_single_explanation(
 
         candidate = dict(result)
         candidate.update({
+            "concept_explanation": concept_explanation,
             "problem_review": problem_review,
             "condition_interpretation": condition_interpretation,
             "solution": solution,
@@ -637,6 +639,7 @@ async def generate_single_explanation(
 
     except Exception as e:
         return {
+            "concept_explanation": [],
             "problem_review": [],
             "condition_interpretation": [],
             "solution": [],
@@ -724,7 +727,35 @@ async def explanation_generation_node(state: MathExplanationState) -> Dict[str, 
 # Node 3: Hard Gate (검증 & 선택)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def validate_json_structure(candidate: dict) -> bool:
+def _has_required_concept_explanation(candidate: dict, explanation_level: str) -> bool:
+    """초급 해설에서 concept_explanation이 실제 설명 block을 포함하는지 확인한다."""
+    if explanation_level != "초급":
+        return True
+
+    blocks = candidate.get("concept_explanation", [])
+    if not isinstance(blocks, list) or not blocks:
+        return False
+
+    text_block_count = 0
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "text" and str(block.get("content", "")).strip():
+            text_block_count += 1
+        elif block.get("type") == "paragraph":
+            content = block.get("content", [])
+            if isinstance(content, list) and any(
+                isinstance(span, dict)
+                and span.get("type") == "text"
+                and str(span.get("text", span.get("content", ""))).strip()
+                for span in content
+            ):
+                text_block_count += 1
+
+    return text_block_count >= 2
+
+
+def validate_json_structure(candidate: dict, explanation_level: str = "중급") -> bool:
     """OutputContract block 구조 검증."""
     def _is_valid_span(span: Any) -> bool:
         if (
@@ -758,12 +789,29 @@ def validate_json_structure(candidate: dict) -> bool:
         return False
 
     required_keys = ["problem_review", "condition_interpretation", "solution"]
-    return all(
+    required_sections_valid = all(
         isinstance(candidate.get(key), list)
         and bool(candidate.get(key))
         and all(_is_valid_block(block) for block in candidate.get(key, []))
         for key in required_keys
     )
+    concept_explanation = candidate.get("concept_explanation", [])
+    if explanation_level == "초급":
+        concept_valid = (
+            isinstance(concept_explanation, list)
+            and bool(concept_explanation)
+            and all(_is_valid_block(block) for block in concept_explanation)
+            and _has_required_concept_explanation(candidate, explanation_level)
+        )
+    else:
+        concept_valid = (
+            concept_explanation in (None, [])
+            or (
+                isinstance(concept_explanation, list)
+                and all(_is_valid_block(block) for block in concept_explanation)
+            )
+        )
+    return required_sections_valid and concept_valid
 
 
 def validate_answer_format(extracted_answer: str, question_type: str) -> bool:
@@ -788,6 +836,7 @@ def validate_latex(candidate: dict) -> bool:
     OutputContract의 latex block에는 delimiter가 없어야 하며 괄호가 맞아야 한다.
     """
     sections = [
+        candidate.get("concept_explanation", []),
         candidate.get("problem_review", []),
         candidate.get("condition_interpretation", []),
         candidate.get("solution", []),
@@ -837,6 +886,7 @@ async def hard_gate_node(state: MathExplanationState) -> Dict[str, Any]:
     started_at = time.perf_counter()
     candidates = state["explanation_candidates"]
     question_type = state["question_type"]
+    explanation_level = state.get("explanation_level", "중급")
 
     # 에러 처리: 후보가 없는 경우
     if not candidates:
@@ -850,7 +900,29 @@ async def hard_gate_node(state: MathExplanationState) -> Dict[str, Any]:
     # 우회 모드: 후보 1개를 바로 최종 해설로 사용
     if DIRECT_EXPLANATION_OUTPUT:
         selected = candidates[0]
-        output = _build_final_output(selected, "", [], [])
+        validation_result = {
+            "candidate_index": 0,
+            "is_valid_json": validate_json_structure(selected, explanation_level),
+            "is_valid_answer_format": validate_answer_format(
+                selected.get("extracted_answer", ""),
+                question_type
+            ),
+            "is_valid_latex": validate_latex(selected)
+        }
+        if (
+            explanation_level == "초급"
+            and not _has_required_concept_explanation(selected, explanation_level)
+        ):
+            output = _build_error_output("초급 해설의 concept_explanation이 비어 있거나 충분하지 않습니다.")
+            output["validation_results"] = [validation_result]
+            output["selected_explanation"] = selected
+            output["stage_timings"] = {
+                **dict(state.get("stage_timings", {})),
+                "hard_gate": round((time.perf_counter() - started_at) * 1000, 1),
+            }
+            return output
+
+        output = _build_final_output(selected, "", [selected], [validation_result])
         output["stage_timings"] = {
             **dict(state.get("stage_timings", {})),
             "hard_gate": round((time.perf_counter() - started_at) * 1000, 1),
@@ -889,7 +961,7 @@ async def hard_gate_node(state: MathExplanationState) -> Dict[str, Any]:
     valid_candidates = []
 
     for i, candidate in enumerate(majority_candidates):
-        is_valid_json = validate_json_structure(candidate)
+        is_valid_json = validate_json_structure(candidate, explanation_level)
         is_valid_answer = validate_answer_format(
             candidate.get("extracted_answer", ""),
             question_type
@@ -946,6 +1018,7 @@ def _build_final_output(
         "majority_candidates": majority_candidates,
         "validation_results": validation_results,
         "selected_explanation": selected,
+        "concept_explanation": selected.get("concept_explanation", []),
         "problem_review": selected.get("problem_review", []),
         "condition_interpretation": selected.get("condition_interpretation", []),
         "solution": selected.get("solution", []),
@@ -964,6 +1037,7 @@ def _build_error_output(error_message: str) -> Dict[str, Any]:
         "majority_candidates": [],
         "validation_results": [],
         "selected_explanation": {},
+        "concept_explanation": [],
         "problem_review": [],
         "condition_interpretation": [],
         "solution": [],

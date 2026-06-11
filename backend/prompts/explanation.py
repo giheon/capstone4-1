@@ -7,7 +7,7 @@ Structure:
 - explanation_level: 초급 / 중급 / 고급
 
 중급은 과목 × 난이도별 독립 프롬프트
-초급은 과목별 beginner 추가 블록을 붙인 형태
+초급은 과목별 개념 설명 추가 블록을 붙인 형태
 고급은 과목별 독립 프롬프트
 """
 
@@ -1743,19 +1743,16 @@ problem_review에서 잡은 핵심 관찰은 solution의 출발점으로 이어�
 problem_review:
 [1. 문제 리뷰]에 해당하는 내용.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조합은 C(n, r), 분수는 1/2, 곱셈은 ×로 쓴다.
 
 condition_interpretation:
 [2. 조건 해석]에 해당하는 내용.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조건을 plain text 문장으로 설명한다.
 
 solution:
 [3. 문제 풀이]에 해당하는 내용.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조합은 C(n, r) 형식으로 쓴다.
 마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 
@@ -2288,21 +2285,17 @@ t=1
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
 <solution>
 [3. 문제 풀이]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 </solution>
 
@@ -2919,21 +2912,17 @@ t=1
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
 <solution>
 [3. 문제 풀이]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 </solution>
 
@@ -3615,22 +3604,16 @@ t=1
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
 <solution>
 [3. 문제 풀이]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 </solution>
 
 각 필드는 반드시 문자열 형식으로 출력한다.
@@ -4170,21 +4153,17 @@ t=1
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
 <solution>
 [3. 문제 풀이]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 </solution>
 
@@ -4900,21 +4879,16 @@ solution에서 앞에서 만든 관계를 사용해 계산하고 답을 낸다.
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
 <solution>
 [3. 문제 풀이]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 </solution>
 
@@ -5166,14 +5140,11 @@ EXPLANATION_PROMPT_GEOMETRY_HARD = """<Role>
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
@@ -5463,21 +5434,17 @@ STEP 1. 첫 조건으로 움직이는 점의 자취 정리하기\n
 <problem_review>
 [1. 문제 리뷰]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
 </problem_review>
 
 <condition_interpretation>
 [2. 조건 해석]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 조건을 plain text 문장으로 설명한다.
 </condition_interpretation>
 
 <solution>
 [3. 문제 풀이]에 해당하는 내용을 작성한다.
 제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
 마지막은 반드시 '답: ○○' 형식으로 끝낸다.
 </solution>
 
@@ -5495,407 +5462,46 @@ JSON 외의 설명, 마크다운 코드블록, 추가 문장은 출력하지 않
 """
 
 
-BEGINNER_EXTRA_PROMPT_STATISTICS = """<BeginnerLevelAddition>
-단, 본격적인 문제 풀이에 들어가기 전에 이 문제를 이해하는 데 필요한 핵심 확률과 통계 개념을 하위권 학생도 이해할 수 있도록 충분히 설명하라.
+CONCEPT_EXTRA_PROMPT_STATISTICS = """<ConceptExplanationAddition>
+초급 해설에서는 본격적인 문제 풀이 전에 이 문제를 이해하는 데 필요한 핵심 확률과 통계 개념을 하위권 학생도 이해할 수 있도록 충분히 설명한다.
 
-개념 설명은 단순한 공식 나열이 아니라 다음 내용을 포함해야 한다.
-
-* 문제에 등장하는 핵심 개념의 교과서적 정의
-* 해당 개념이 이 문제에서 왜 필요한지
-* 공식이나 성질이 성립하는 기본 원리
-* 표본공간과 사건의 의미
-* 순열, 조합, 중복순열, 중복조합을 구분하는 기준
-* 순서 고려 여부, 중복 허용 여부, 같은 대상의 구별 여부가 경우의 수에 미치는 영향
-* 확률을 경우의 수의 비로 계산할 수 있는 조건
-* 합사건, 곱사건, 여사건, 배반사건, 독립사건의 의미와 차이
-* 조건부확률에서 조건 사건이 새로운 표본공간이 되는 이유
-* 반복 시행에서 시행 횟수, 성공 사건, 성공확률, 독립성을 확인해야 하는 이유
-* 확률변수와 확률분포의 의미
-* 확률변수의 가능한 값을 빠짐없이 서로 겹치지 않게 나누어야 하는 이유
-* 기댓값, 분산, 표준편차가 각각 나타내는 의미
-* 이항분포가 성립하기 위한 조건
-* 정규분포의 평균과 분산, 표준편차의 의미
-* 정규분포를 표준화하는 이유와 표준화된 값의 의미
-* 표본평균의 분포와 (\frac{\sigma}{\sqrt{n}})의 의미
-* 신뢰구간에서 신뢰도, 오차한계, 구간의 전체 길이의 차이
-* 학생이 자주 혼동하는 개념과 대표적인 실수
-
-특히 순열과 조합의 구분, 중복 계산과 누락이 생기는 이유, 조건부확률의 분모가 조건 사건이라는 점, 독립과 배반의 차이, 확률변수의 가능한 값과 범위, 이항분포의 적용 조건, 분산과 표준편차의 차이, 정규분포 표준화에서 표준편차로 나누는 이유처럼 학생이 놓치기 쉬운 내용을 반드시 포함하라.
-
-개념 설명은 쉬운 말과 단계적인 흐름으로 작성하되, 문제와 직접 관련 없는 일반론을 과도하게 확장하지 않는다.
-
-개념 설명이 끝난 뒤에는 원본 프롬프트의 problem_review, condition_interpretation, solution 구조를 그대로 따라 문제를 해설한다.
-
-초급 해설에서는 다음을 추가로 지킨다.
-
-* 새로운 기호를 사용하기 전에 그 의미를 먼저 설명한다.
-* 식을 세우기 전에 왜 그 식이 필요한지 말한다.
-* 표본공간을 정할 때 무엇을 하나의 결과로 보는지 설명한다.
-* 순열이나 조합을 사용할 때 순서를 고려하는지 먼저 설명한다.
-* 중복을 허용하거나 제거할 때 그 이유를 설명한다.
-* 경우를 나눌 때 어떤 조건을 기준으로 나누는지 설명한다.
-* 각 경우가 서로 겹치지 않고 전체를 빠짐없이 덮는지 설명한다.
-* 조건부확률에서는 분모가 되는 조건 사건과 분자가 되는 교집합 사건을 구분하여 설명한다.
-* 확률변수의 값을 나눌 때 각 값이 어떤 경우에 발생하는지 설명한다.
-* 후보나 경우를 제거할 때 어떤 조건을 위반하는지 구체적으로 밝힌다.
-* 계산을 지나치게 압축하지 않는다.
-* “당연히”, “바로”, “쉽게 알 수 있다”와 같은 표현으로 핵심 근거를 생략하지 않는다.
-* 풀이의 각 STEP이 무엇을 구하기 위한 단계인지 학생이 알 수 있도록 설명한다.
-* 최종 답을 구한 뒤, 핵심 개념과 풀이 흐름을 짧게 다시 정리한다.
-
-</BeginnerLevelAddition>
-
-<extra OutputSchem>
-
-출력에는 기존 Output Schema의 필드와 함께 Beginner 필드를 반드시 포함한다.
-
-출력 필드는 다음 네 개만 사용한다.
-
-Beginner
-problem_review
-condition_interpretation
-solution
-
-<Beginner>
-[0. 개념 설명]에 해당하는 내용을 작성한다.
-
-문제를 이해하고 풀이를 시작하는 데 필요한 기본적인 수학 개념을 설명한다.
-
-현재 문제와 직접 관련된 개념만 설명한다.
-
-공식이나 정의를 단순히 나열하지 말고, 해당 개념이 문제에서 어떤 역할을 하는지 쉽게 설명한다.
-
+concept_explanation에는 현재 문제와 직접 관련된 개념만 담는다.
+단순한 공식 나열이 아니라 개념의 뜻, 이 문제에서 필요한 이유, 공식이나 성질이 성립하는 기본 원리, 학생이 자주 혼동하는 지점을 포함한다.
 문제를 실제로 계산하거나 정답을 도출하지 않는다.
 
-[0. 개념 설명]이라는 제목은 내용에 포함하지 않는다.
+특히 문제와 관련이 있으면 표본공간과 사건, 순열과 조합의 구분, 중복 계산과 누락, 조건부확률의 분모, 독립과 배반의 차이, 확률변수의 가능한 값, 이항분포의 적용 조건, 분산과 표준편차의 차이, 정규분포 표준화의 의미를 쉬운 말로 설명한다.
 
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-분수는 1/2 형식으로 쓰고, 곱셈은 ×로 쓴다.
-</Beginner>
-
-<problem_review>
-[1. 문제 리뷰]에 해당하는 내용을 작성한다.
-
-문제를 처음 보았을 때 확인해야 할 구조, 핵심 조건, 접근 방향을 설명한다.
-
-실제 계산이나 정답 도출은 시작하지 않는다.
-
-[1. 문제 리뷰]라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-분수는 1/2 형식으로 쓰고, 곱셈은 ×로 쓴다.
-</problem_review>
-
-<condition_interpretation>
-[2. 조건 해석]에 해당하는 내용을 작성한다.
-
-문제의 각 조건을 풀이에서 사용할 수 있는 형태로 해석한다.
-
-조건을 단순히 반복하지 말고, 각 조건이 무엇을 제한하거나 결정하는지 plain text 문장으로 설명한다.
-
-최종 계산이나 정답 도출은 하지 않는다.
-
-[2. 조건 해석]이라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-</condition_interpretation>
-
-<solution>
-[3. 문제 풀이]에 해당하는 내용을 작성한다.
-
-앞에서 설명한 개념, 문제 구조, 조건 해석을 실제 계산과 결론 도출에 사용한다.
-
-필요한 경우 STEP 형식으로 풀이를 구분한다.
-
-[3. 문제 풀이]라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-마지막은 반드시 '답: ○○' 형식으로 끝낸다.
-</solution>
-
-각 필드는 반드시 String 형식으로 출력한다.
-
-출력 순서는 반드시 다음과 같이 한다.
-
-1. Beginner
-2. problem_review
-3. condition_interpretation
-4. solution
-
-Beginner에서 설명한 개념은 problem_review 또는 solution에서 실제로 활용해야 한다.
-
-네 필드가 서로 독립적으로 작성되지 않도록 한다.
-
-JSON key는 반드시 Beginner, problem_review, condition_interpretation, solution 네 개만 사용한다.
-
-JSON 외의 설명, 마크다운 코드블록, 추가 문장은 출력하지 않는다.
-
-</extra OutputSchem>
+concept_explanation에서 설명한 개념은 problem_review, condition_interpretation, solution 중 적절한 곳에서 실제로 활용한다.
+식을 세우기 전에 왜 그 식이 필요한지 말하고, 풀이의 각 단계가 무엇을 구하기 위한 단계인지 학생이 알 수 있도록 설명한다.
+</ConceptExplanationAddition>
 """
 
-BEGINNER_EXTRA_PROMPT_CALCULUS = """<BeginnerLevelAddition>
-단, 본격적인 문제 풀이에 들어가기 전에 이 문제를 이해하는 데 필요한 핵심 수학 개념을 하위권 학생도 이해할 수 있도록 충분히 설명하라.
+CONCEPT_EXTRA_PROMPT_CALCULUS = """<ConceptExplanationAddition>
+초급 해설에서는 본격적인 문제 풀이 전에 이 문제를 이해하는 데 필요한 핵심 미적분 개념을 하위권 학생도 이해할 수 있도록 충분히 설명한다.
 
-개념 설명은 단순한 공식 나열이 아니라 다음 내용을 포함해야 한다.
-
-* 문제에 등장하는 핵심 개념의 교과서적 정의
-* 해당 개념이 이 문제에서 왜 필요한지
-* 공식이나 성질이 성립하는 기본 원리
-* 함수와 그래프의 기하학적 의미
-* 함수값, 도함수, 극값, 증가·감소, 연속성, 미분가능성, 적분값의 의미
-* 부호 변화가 그래프의 모양과 결론에 미치는 영향
-* 합성함수나 역함수가 등장하는 경우 각 함수의 입력과 출력이 어떻게 연결되는지
-* 조각함수나 절댓값 함수에서 구간을 나누어야 하는 이유
-* 적분 문제에서 적분값과 넓이의 차이
-* 학생이 자주 혼동하는 개념과 대표적인 실수
-
-특히 그래프의 위치관계, 도함수의 부호 변화, 극값이 생기는 원리, 연속성과 미분가능성의 차이처럼 학생이 놓치기 쉬운 내용을 반드시 포함하라.
-
-개념 설명은 쉬운 말과 단계적인 흐름으로 작성하되, 문제와 직접 관련 없는 일반론을 과도하게 확장하지 않는다.
-
-개념 설명이 끝난 뒤에는 원본 프롬프트의 problem_review, condition_interpretation, solution 구조를 그대로 따라 문제를 해설한다.
-
-초급 해설에서는 다음을 추가로 지킨다.
-
-* 새로운 기호를 사용하기 전에 그 의미를 먼저 설명한다.
-* 식을 세우기 전에 왜 그 식이 필요한지 말한다.
-* 구간을 나눌 때 경계점에서 무엇이 달라지는지 설명한다.
-* 후보를 제거할 때 어떤 조건을 위반하는지 구체적으로 밝힌다.
-* 계산을 지나치게 압축하지 않는다.
-* “당연히”, “바로”, “쉽게 알 수 있다”와 같은 표현으로 핵심 근거를 생략하지 않는다.
-* 풀이의 각 STEP이 무엇을 구하기 위한 단계인지 학생이 알 수 있도록 설명한다.
-* 최종 답을 구한 뒤, 핵심 개념과 풀이 흐름을 짧게 다시 정리한다.
-</BeginnerLevelAddition>
-
-<extra OutputSchem>
-
-출력에는 기존 Output Schema의 필드와 함께 Beginner 필드를 반드시 포함한다.
-
-출력 필드는 다음 네 개만 사용한다.
-
-Beginner
-problem_review
-condition_interpretation
-solution
-
-<Beginner>
-[0. 개념 설명]에 해당하는 내용을 작성한다.
-
-문제를 이해하고 풀이를 시작하는 데 필요한 기본적인 수학 개념을 설명한다.
-
-현재 문제와 직접 관련된 개념만 설명한다.
-
-공식이나 정의를 단순히 나열하지 말고, 해당 개념이 문제에서 어떤 역할을 하는지 쉽게 설명한다.
-
+concept_explanation에는 현재 문제와 직접 관련된 개념만 담는다.
+단순한 공식 나열이 아니라 개념의 뜻, 이 문제에서 필요한 이유, 공식이나 성질이 성립하는 기본 원리, 학생이 자주 혼동하는 지점을 포함한다.
 문제를 실제로 계산하거나 정답을 도출하지 않는다.
 
-[0. 개념 설명]이라는 제목은 내용에 포함하지 않는다.
+특히 문제와 관련이 있으면 함수와 그래프의 의미, 함수값과 도함수의 의미, 증가·감소와 도함수 부호의 관계, 극값이 생기는 원리, 연속성과 미분가능성의 차이, 합성함수에서 안쪽 함수와 바깥 함수가 연결되는 방식을 쉬운 말로 설명한다.
 
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-분수는 1/2 형식으로 쓰고, 곱셈은 ×로 쓴다.
-</Beginner>
-
-<problem_review>
-[1. 문제 리뷰]에 해당하는 내용을 작성한다.
-
-문제를 처음 보았을 때 확인해야 할 구조, 핵심 조건, 접근 방향을 설명한다.
-
-실제 계산이나 정답 도출은 시작하지 않는다.
-
-[1. 문제 리뷰]라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-분수는 1/2 형식으로 쓰고, 곱셈은 ×로 쓴다.
-</problem_review>
-
-<condition_interpretation>
-[2. 조건 해석]에 해당하는 내용을 작성한다.
-
-문제의 각 조건을 풀이에서 사용할 수 있는 형태로 해석한다.
-
-조건을 단순히 반복하지 말고, 각 조건이 무엇을 제한하거나 결정하는지 plain text 문장으로 설명한다.
-
-최종 계산이나 정답 도출은 하지 않는다.
-
-[2. 조건 해석]이라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-</condition_interpretation>
-
-<solution>
-[3. 문제 풀이]에 해당하는 내용을 작성한다.
-
-앞에서 설명한 개념, 문제 구조, 조건 해석을 실제 계산과 결론 도출에 사용한다.
-
-필요한 경우 STEP 형식으로 풀이를 구분한다.
-
-[3. 문제 풀이]라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-마지막은 반드시 '답: ○○' 형식으로 끝낸다.
-</solution>
-
-각 필드는 반드시 String 형식으로 출력한다.
-
-출력 순서는 반드시 다음과 같이 한다.
-
-1. Beginner
-2. problem_review
-3. condition_interpretation
-4. solution
-
-Beginner에서 설명한 개념은 problem_review 또는 solution에서 실제로 활용해야 한다.
-
-네 필드가 서로 독립적으로 작성되지 않도록 한다.
-
-JSON key는 반드시 Beginner, problem_review, condition_interpretation, solution 네 개만 사용한다.
-
-JSON 외의 설명, 마크다운 코드블록, 추가 문장은 출력하지 않는다.
-
-</extra OutputSchem>
+concept_explanation에서 설명한 개념은 problem_review, condition_interpretation, solution 중 적절한 곳에서 실제로 활용한다.
+식을 세우기 전에 왜 그 식이 필요한지 말하고, 풀이의 각 단계가 무엇을 구하기 위한 단계인지 학생이 알 수 있도록 설명한다.
+</ConceptExplanationAddition>
 """
 
-BEGINNER_EXTRA_PROMPT_GEOMETRY = """<BeginnerLevelAddition>
-단, 본격적인 문제 풀이에 들어가기 전에 이 문제를 이해하는 데 필요한 핵심 기하 개념을 하위권 학생도 이해할 수 있도록 충분히 설명하라.
+CONCEPT_EXTRA_PROMPT_GEOMETRY = """<ConceptExplanationAddition>
+초급 해설에서는 본격적인 문제 풀이 전에 이 문제를 이해하는 데 필요한 핵심 기하 개념을 하위권 학생도 이해할 수 있도록 충분히 설명한다.
 
-개념 설명은 단순한 공식 나열이 아니라 다음 내용을 포함해야 한다.
-
-* 문제에 등장하는 핵심 개념의 교과서적 정의
-* 해당 개념이 이 문제에서 왜 필요한지
-* 공식이나 성질이 성립하는 기본 원리
-* 점, 직선, 평면, 도형 사이의 위치 관계와 기하적 의미
-* 길이, 거리, 각, 넓이, 부피, 벡터, 내적의 의미
-* 포물선, 타원, 쌍곡선에서 초점, 준선, 중심, 축, 꼭짓점, 점근선이 갖는 의미
-* 이차곡선의 거리 조건이 곡선의 모양과 점의 위치를 결정하는 방식
-* 벡터의 크기와 방향, 벡터의 합과 실수배가 점의 위치 관계와 연결되는 방식
-* 내적의 값과 부호가 두 벡터의 각, 수직 관계, 정사영에 미치는 영향
-* 중점, 내분점, 외분점, 대칭점이 좌표와 벡터식으로 표현되는 원리
-* 공간도형에서 단면이나 정사영을 이용해 평면도형으로 바꾸어 보는 이유
-* 공간좌표에서 원점과 좌표축을 도형의 직각, 평행, 대칭 구조에 맞게 설정하는 이유
-* 학생이 자주 혼동하는 개념과 대표적인 실수
-
-특히 그림에서 그렇게 보이는 관계와 문제 조건으로 확인된 관계의 차이, 벡터와 벡터의 크기의 차이, (\overrightarrow{AB})와 (\overrightarrow{BA})의 방향 차이, 내분과 외분의 차이, 이차곡선의 거리합과 거리차의 의미, 공간에서의 수직·평행·정사영 관계처럼 학생이 놓치기 쉬운 내용을 반드시 포함하라.
-
-개념 설명은 쉬운 말과 단계적인 흐름으로 작성하되, 문제와 직접 관련 없는 일반론을 과도하게 확장하지 않는다.
-
-개념 설명이 끝난 뒤에는 원본 프롬프트의 problem_review, condition_interpretation, solution 구조를 그대로 따라 문제를 해설한다.
-
-초급 해설에서는 다음을 추가로 지킨다.
-
-* 새로운 점, 직선, 평면, 벡터, 좌표 또는 기호를 사용하기 전에 그 의미를 먼저 설명한다.
-* 식을 세우기 전에 왜 그 식이 필요한지, 그 식이 어떤 거리·길이·각도·위치 관계를 나타내는지 말한다.
-* 좌표를 설정할 때 원점과 좌표축을 그렇게 잡는 이유를 설명한다.
-* 보조점을 도입할 때 그 점을 잡으면 어떤 기하적 관계가 드러나는지 설명한다.
-* 경우를 나눌 때 점의 위치, 곡선의 가지, 선분의 순서, 벡터의 방향 또는 부호 중 무엇이 달라지는지 설명한다.
-* 후보를 제거할 때 어떤 거리 조건, 위치 조건, 방향 조건, 범위 조건 또는 도형 조건을 위반하는지 구체적으로 밝힌다.
-* 대칭, 수직, 평행, 같은 길이, 같은 각을 사용할 때 그 관계가 어떤 문제 조건이나 식에서 나오는지 설명한다.
-* 벡터식을 사용할 때 각 벡터가 어느 점에서 어느 점으로 향하는지 설명한다.
-* 내적을 사용할 때 길이, 각도, 수직, 정사영 중 어떤 정보를 얻기 위한 것인지 설명한다.
-* 이차곡선의 정의를 사용할 때 어느 점에서 어느 초점 또는 준선까지의 거리인지 구체적으로 밝힌다.
-* 공간도형을 단면이나 정사영으로 바꿀 때 어떤 평면으로 자르거나 어느 평면에 정사영하는지 설명한다.
-* 계산을 지나치게 압축하지 않는다.
-* “당연히”, “바로”, “쉽게 알 수 있다”, “그림에서 알 수 있다”와 같은 표현으로 핵심 근거를 생략하지 않는다.
-* 풀이의 각 STEP이 무엇을 구하기 위한 단계인지 학생이 알 수 있도록 설명한다.
-* 최종 답을 구한 뒤, 핵심 기하 개념과 풀이 흐름을 짧게 다시 정리한다.
-
-</BeginnerLevelAddition>
-
-
-<extra OutputSchem>
-
-출력에는 기존 Output Schema의 필드와 함께 Beginner 필드를 반드시 포함한다.
-
-출력 필드는 다음 네 개만 사용한다.
-
-Beginner
-problem_review
-condition_interpretation
-solution
-
-<Beginner>
-[0. 개념 설명]에 해당하는 내용을 작성한다.
-
-문제를 이해하고 풀이를 시작하는 데 필요한 기본적인 수학 개념을 설명한다.
-
-현재 문제와 직접 관련된 개념만 설명한다.
-
-공식이나 정의를 단순히 나열하지 말고, 해당 개념이 문제에서 어떤 역할을 하는지 쉽게 설명한다.
-
+concept_explanation에는 현재 문제와 직접 관련된 개념만 담는다.
+단순한 공식 나열이 아니라 개념의 뜻, 이 문제에서 필요한 이유, 공식이나 성질이 성립하는 기본 원리, 학생이 자주 혼동하는 지점을 포함한다.
 문제를 실제로 계산하거나 정답을 도출하지 않는다.
 
-[0. 개념 설명]이라는 제목은 내용에 포함하지 않는다.
+특히 문제와 관련이 있으면 점·직선·평면의 위치 관계, 길이·거리·각·벡터·내적의 의미, 이차곡선의 거리 조건, 벡터의 방향과 크기의 차이, 좌표와 공간도형을 평면적으로 해석하는 이유를 쉬운 말로 설명한다.
 
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-분수는 1/2 형식으로 쓰고, 곱셈은 ×로 쓴다.
-</Beginner>
-
-<problem_review>
-[1. 문제 리뷰]에 해당하는 내용을 작성한다.
-
-문제를 처음 보았을 때 확인해야 할 구조, 핵심 조건, 접근 방향을 설명한다.
-
-실제 계산이나 정답 도출은 시작하지 않는다.
-
-[1. 문제 리뷰]라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-분수는 1/2 형식으로 쓰고, 곱셈은 ×로 쓴다.
-</problem_review>
-
-<condition_interpretation>
-[2. 조건 해석]에 해당하는 내용을 작성한다.
-
-문제의 각 조건을 풀이에서 사용할 수 있는 형태로 해석한다.
-
-조건을 단순히 반복하지 말고, 각 조건이 무엇을 제한하거나 결정하는지 plain text 문장으로 설명한다.
-
-최종 계산이나 정답 도출은 하지 않는다.
-
-[2. 조건 해석]이라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-</condition_interpretation>
-
-<solution>
-[3. 문제 풀이]에 해당하는 내용을 작성한다.
-
-앞에서 설명한 개념, 문제 구조, 조건 해석을 실제 계산과 결론 도출에 사용한다.
-
-필요한 경우 STEP 형식으로 풀이를 구분한다.
-
-[3. 문제 풀이]라는 제목은 내용에 포함하지 않는다.
-
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-
-마지막은 반드시 '답: ○○' 형식으로 끝낸다.
-</solution>
-
-각 필드는 반드시 String 형식으로 출력한다.
-
-출력 순서는 반드시 다음과 같이 한다.
-
-1. Beginner
-2. problem_review
-3. condition_interpretation
-4. solution
-
-Beginner에서 설명한 개념은 problem_review 또는 solution에서 실제로 활용해야 한다.
-
-네 필드가 서로 독립적으로 작성되지 않도록 한다.
-
-JSON key는 반드시 Beginner, problem_review, condition_interpretation, solution 네 개만 사용한다.
-
-JSON 외의 설명, 마크다운 코드블록, 추가 문장은 출력하지 않는다.
-
-</extra OutputSchem>
+concept_explanation에서 설명한 개념은 problem_review, condition_interpretation, solution 중 적절한 곳에서 실제로 활용한다.
+새로운 점, 직선, 평면, 벡터, 좌표 또는 기호를 쓰기 전에 의미를 먼저 설명하고, 식을 세우기 전에 그 식이 어떤 거리·길이·각도·위치 관계를 나타내는지 말한다.
+</ConceptExplanationAddition>
 """
 
 ADVANCED_PROMPT_STATISTICS = """#<Role>
@@ -6581,18 +6187,18 @@ EXPLANATION_PROMPTS: Dict[Tuple[str, str, str], str] = {
     ("기하", "medium", "중급"): EXPLANATION_PROMPT_GEOMETRY_MEDIUM,
     ("기하", "hard", "중급"): EXPLANATION_PROMPT_GEOMETRY_HARD,
     ("기하", "killer", "중급"): EXPLANATION_PROMPT_GEOMETRY_KILLER,
-    ("확률과통계", "easy", "초급"): EXPLANATION_PROMPT_STATISTICS_EASY + "\n" + BEGINNER_EXTRA_PROMPT_STATISTICS,
-    ("확률과통계", "medium", "초급"): EXPLANATION_PROMPT_STATISTICS_MEDIUM + "\n" + BEGINNER_EXTRA_PROMPT_STATISTICS,
-    ("확률과통계", "hard", "초급"): EXPLANATION_PROMPT_STATISTICS_HARD + "\n" + BEGINNER_EXTRA_PROMPT_STATISTICS,
-    ("확률과통계", "killer", "초급"): EXPLANATION_PROMPT_STATISTICS_KILLER + "\n" + BEGINNER_EXTRA_PROMPT_STATISTICS,
-    ("미적분", "easy", "초급"): EXPLANATION_PROMPT_CALCULUS_EASY + "\n" + BEGINNER_EXTRA_PROMPT_CALCULUS,
-    ("미적분", "medium", "초급"): EXPLANATION_PROMPT_CALCULUS_MEDIUM + "\n" + BEGINNER_EXTRA_PROMPT_CALCULUS,
-    ("미적분", "hard", "초급"): EXPLANATION_PROMPT_CALCULUS_HARD + "\n" + BEGINNER_EXTRA_PROMPT_CALCULUS,
-    ("미적분", "killer", "초급"): EXPLANATION_PROMPT_CALCULUS_KILLER + "\n" + BEGINNER_EXTRA_PROMPT_CALCULUS,
-    ("기하", "easy", "초급"): EXPLANATION_PROMPT_GEOMETRY_EASY + "\n" + BEGINNER_EXTRA_PROMPT_GEOMETRY,
-    ("기하", "medium", "초급"): EXPLANATION_PROMPT_GEOMETRY_MEDIUM + "\n" + BEGINNER_EXTRA_PROMPT_GEOMETRY,
-    ("기하", "hard", "초급"): EXPLANATION_PROMPT_GEOMETRY_HARD + "\n" + BEGINNER_EXTRA_PROMPT_GEOMETRY,
-    ("기하", "killer", "초급"): EXPLANATION_PROMPT_GEOMETRY_KILLER + "\n" + BEGINNER_EXTRA_PROMPT_GEOMETRY,
+    ("확률과통계", "easy", "초급"): EXPLANATION_PROMPT_STATISTICS_EASY + "\n" + CONCEPT_EXTRA_PROMPT_STATISTICS,
+    ("확률과통계", "medium", "초급"): EXPLANATION_PROMPT_STATISTICS_MEDIUM + "\n" + CONCEPT_EXTRA_PROMPT_STATISTICS,
+    ("확률과통계", "hard", "초급"): EXPLANATION_PROMPT_STATISTICS_HARD + "\n" + CONCEPT_EXTRA_PROMPT_STATISTICS,
+    ("확률과통계", "killer", "초급"): EXPLANATION_PROMPT_STATISTICS_KILLER + "\n" + CONCEPT_EXTRA_PROMPT_STATISTICS,
+    ("미적분", "easy", "초급"): EXPLANATION_PROMPT_CALCULUS_EASY + "\n" + CONCEPT_EXTRA_PROMPT_CALCULUS,
+    ("미적분", "medium", "초급"): EXPLANATION_PROMPT_CALCULUS_MEDIUM + "\n" + CONCEPT_EXTRA_PROMPT_CALCULUS,
+    ("미적분", "hard", "초급"): EXPLANATION_PROMPT_CALCULUS_HARD + "\n" + CONCEPT_EXTRA_PROMPT_CALCULUS,
+    ("미적분", "killer", "초급"): EXPLANATION_PROMPT_CALCULUS_KILLER + "\n" + CONCEPT_EXTRA_PROMPT_CALCULUS,
+    ("기하", "easy", "초급"): EXPLANATION_PROMPT_GEOMETRY_EASY + "\n" + CONCEPT_EXTRA_PROMPT_GEOMETRY,
+    ("기하", "medium", "초급"): EXPLANATION_PROMPT_GEOMETRY_MEDIUM + "\n" + CONCEPT_EXTRA_PROMPT_GEOMETRY,
+    ("기하", "hard", "초급"): EXPLANATION_PROMPT_GEOMETRY_HARD + "\n" + CONCEPT_EXTRA_PROMPT_GEOMETRY,
+    ("기하", "killer", "초급"): EXPLANATION_PROMPT_GEOMETRY_KILLER + "\n" + CONCEPT_EXTRA_PROMPT_GEOMETRY,
     ("확률과통계", "easy", "고급"): ADVANCED_PROMPT_STATISTICS,
     ("확률과통계", "medium", "고급"): ADVANCED_PROMPT_STATISTICS,
     ("확률과통계", "hard", "고급"): ADVANCED_PROMPT_STATISTICS,
@@ -6632,7 +6238,65 @@ def build_explanation_chat_prompt(
     base_prompt = _escape_curly_braces(
         get_explanation_prompt(subject, difficulty, explanation_level)
     )
-    output_contract = _escape_curly_braces("""
+    if explanation_level == "초급":
+        concept_schema_value = """[
+    {"type": "text", "content": "개념 설명"}
+  ]"""
+        concept_rules = """1. "concept_explanation"은 절대 빈 배열로 두지 마라.
+2. "concept_explanation"에는 문제 풀이 전에 알아야 할 개념을 문제와 직접 관련된 범위에서 충분히 설명하라.
+3. "concept_explanation"에는 최소 2개의 text block을 넣고, 필요한 경우 latex block을 함께 사용하라.
+4. "concept_explanation"은 문제에서 사용되는 단순 공식 나열 및 개념의 뜻을 꼭 포함하라.
+5. "concept_explanation"은 sinx, cosx 같은 삼각함수의 정의, 도함수의 의미, 극값의 개념처럼 문제 풀이에 직접적으로 필요한 기초 개념을 설명하는 데 집중하라.
+6. "concept_explanation"은 초급 단계에서 중요하기에 문제 리뷰, 조건 해석, 풀이 섹션처럼 자세히 작성하라."""
+        output_example = """{
+  "concept_explanation": [
+    {"type": "text", "content": "합성함수는 바깥 함수와 안쪽 함수가 겹쳐 있는 함수입니다."},
+    {"type": "latex", "content": "f(x)=\\sin(g(x))"},
+    {"type": "text", "content": "이런 함수의 극값을 보려면 안쪽 함수의 변화와 도함수의 부호 변화를 함께 봐야 합니다."}
+  ],
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 합성삼각함수의 내부 각을 먼저 정리하는 문제입니다."},
+    {"type": "latex", "content": "f(x)=\\sin(ax+b+\\sin x)"},
+    {"type": "text", "content": "조건이 내부 각의 구조를 제한하므로 상수 조건을 먼저 봅니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "조건을 대입하면 먼저 다음 관계가 나옵니다."},
+    {"type": "latex", "content": "f(0)=\\sin b=0"},
+    {"type": "text", "content": "따라서 상수 b는 다음처럼 둘 수 있습니다."},
+    {"type": "latex", "content": "b=k\\pi"}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수를 계산해 극대 조건을 확인합니다."},
+    {"type": "latex", "content": "f'(x)=\\cos(ax+b+\\sin x)(a+\\cos x)"},
+    {"type": "text", "content": "앞에서 설명한 도함수의 부호 변화를 이용해 극대 후보를 판단합니다."}
+  ],
+  "answer": "17"
+}"""
+    else:
+        concept_schema_value = "[]"
+        concept_rules = """1. "concept_explanation"은 반드시 빈 배열로 둔다.
+2. 개념 설명 섹션을 따로 작성하지 말고, 필요한 설명은 problem_review, condition_interpretation, solution 안에 압축해서 작성한다."""
+        output_example = """{
+  "concept_explanation": [],
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
+}"""
+
+    output_contract_text = """
 <OutputContract>
 아래 OutputContract는 기존 프롬프트 안의 JSON 형식, 답 표기 형식, 수식 delimiter 규칙보다 우선한다.
 
@@ -6642,6 +6306,7 @@ JSON 밖에 설명, 마크다운 코드블록, 주석, 추가 문장을 절대 �
 최상위 JSON 구조는 반드시 다음 필드를 가진다.
 
 {
+  "concept_explanation": __CONCEPT_SCHEMA_VALUE__,
   "problem_review": [],
   "condition_interpretation": [],
   "solution": [],
@@ -6650,12 +6315,13 @@ JSON 밖에 설명, 마크다운 코드블록, 주석, 추가 문장을 절대 �
 
 각 필드의 의미는 다음과 같다.
 
+- "concept_explanation": 초급 해설의 개념 설명
 - "problem_review": 문제 리뷰
 - "condition_interpretation": 조건 해석
 - "solution": 문제풀이
 - "answer": 최종 정답
 
-"problem_review", "condition_interpretation", "solution"은 모두 block 배열이다.
+"concept_explanation", "problem_review", "condition_interpretation", "solution"은 모두 block 배열이다.
 각 block은 반드시 다음 두 종류 중 하나여야 한다.
 
 1. text block
@@ -6679,76 +6345,38 @@ latex block의 형식은 반드시 다음과 같다.
 
 중요 규칙:
 
-1. section 배열 안에서 text block과 latex block을 자연스러운 순서로 번갈아 작성하라.
-2. text block에는 설명 문장만 작성하라. 수식, 변수식, 계산식을 넣지 마라.
-3. latex block에는 수식만 작성하라. 설명 문장을 넣지 마라.
-4. latex block에는 절대 수식 delimiter를 넣지 마라.
+__CONCEPT_RULES__
+5. section 배열 안에서 text block과 latex block을 자연스러운 순서로 번갈아 작성하라.
+6. text block에는 설명 문장만 작성하라. 수식, 변수식, 계산식을 넣지 마라.
+7. latex block에는 수식만 작성하라. 설명 문장을 넣지 마라.
+8. latex block에는 절대 수식 delimiter를 넣지 마라.
 금지: "$...$", "$$...$$", "\\(...\\)", "\\[...\\]"
-5. JSON 문자열 안에서 LaTeX 백슬래시는 반드시 한 번만 이스케이프하라.
+9. JSON 문자열 안에서 LaTeX 백슬래시는 반드시 한 번만 이스케이프하라.
 좋은 예: "\\frac{1}{2}", "\\sqrt{x}", "\\sin x", "\\int_0^1 x^2\\,dx"
 금지: "\\\\sin", "\\\\cos", "\\\\pi", "\\\\alpha"처럼 과하게 이스케이프하지 마라.
-6. 같은 section에서 latex block을 연속으로 2개 이상 쓰지 마라. 중간에 설명 text block을 넣어라.
-7. 한 latex block에는 의미상 하나의 식 또는 한 줄 계산만 넣어라.
-8. 긴 계산식, 도함수 전체 식, 여러 단계 전개식도 latex block으로 작성하되, 앞뒤에 설명 text block을 둬라.
-9. block 배열은 text, latex, text, latex처럼 여러 번 번갈아 나올 수 있다.
-10. 각 section에는 최소 1개의 text block과 최소 1개의 latex block을 넣어라.
-11. "answer"에는 최종 답만 간단히 넣어라.
+10. 같은 section에서 latex block을 연속으로 2개 이상 쓰지 마라. 중간에 설명 text block을 넣어라.
+11. 한 latex block에는 의미상 하나의 식 또는 한 줄 계산만 넣어라.
+12. 긴 계산식, 도함수 전체 식, 여러 단계 전개식도 latex block으로 작성하되, 앞뒤에 설명 text block을 둬라.
+13. block 배열은 text, latex, text, latex처럼 여러 번 번갈아 나올 수 있다.
+14. "problem_review", "condition_interpretation", "solution"에는 각각 최소 1개의 text block과 최소 1개의 latex block을 넣어라.
+15. "answer"에는 최종 답만 간단히 넣어라.
 객관식이면 보기 번호를 문자열로 넣고, 단답형이면 최종 값을 문자열로 넣어라.
-12. 출력은 반드시 JSON으로 파싱 가능해야 한다.
+16. 출력은 반드시 JSON으로 파싱 가능해야 한다.
 trailing comma를 쓰지 마라.
 single quote를 쓰지 마라.
 모든 key와 string은 double quote를 사용하라.
 
-간단한 출력 예시는 다음과 같다.
+출력 예시는 다음과 같다.
 
-{
-  "problem_review": [
-    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
-    {"type": "latex", "content": "f'(x)=0"},
-    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
-  ],
-  "condition_interpretation": [
-    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
-    {"type": "latex", "content": "f'(x)=3x^2-6x"},
-    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
-  ],
-  "solution": [
-    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
-    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
-    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
-    {"type": "latex", "content": "x=0,\\;2"},
-    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
-  ],
-  "answer": "2"
-}
-
-번갈아 나오는 출력 예시는 다음과 같다.
-
-{
-  "problem_review": [
-    {"type": "text", "content": "이 문제는 합성삼각함수의 내부 각을 먼저 정리하는 문제입니다."},
-    {"type": "latex", "content": "f(x)=\\sin(ax+b+\\sin x)"},
-    {"type": "text", "content": "조건이 내부 각의 구조를 제한하므로 상수 조건을 먼저 봅니다."}
-  ],
-  "condition_interpretation": [
-    {"type": "text", "content": "조건을 대입하면 먼저 다음 관계가 나옵니다."},
-    {"type": "latex", "content": "f(0)=\\sin b=0"},
-    {"type": "text", "content": "따라서 상수 b는 다음처럼 둘 수 있습니다."},
-    {"type": "latex", "content": "b=k\\pi"},
-    {"type": "text", "content": "다음 조건도 같은 방식으로 정리합니다."},
-    {"type": "latex", "content": "f(2\\pi)=\\sin(2\\pi a+b)"}
-  ],
-  "solution": [
-    {"type": "text", "content": "도함수를 계산해 극대 조건을 확인합니다."},
-    {"type": "latex", "content": "f'(x)=\\cos(ax+b+\\sin x)(a+\\cos x)"},
-    {"type": "text", "content": "내부 각을 새 함수로 두면 구간 분석이 쉬워집니다."},
-    {"type": "latex", "content": "g(x)=\\frac{3}{2}x-3\\pi+\\sin x"},
-    {"type": "text", "content": "구간 끝값을 비교해 극대 후보를 셉니다."}
-  ],
-  "answer": "17"
-}
+__OUTPUT_EXAMPLE__
 </OutputContract>
-""")
+"""
+    output_contract = _escape_curly_braces(
+        output_contract_text
+        .replace("__CONCEPT_SCHEMA_VALUE__", concept_schema_value)
+        .replace("__CONCEPT_RULES__", concept_rules)
+        .replace("__OUTPUT_EXAMPLE__", output_example)
+    )
     messages = [
         ("system", base_prompt + "\n" + output_contract),
         (

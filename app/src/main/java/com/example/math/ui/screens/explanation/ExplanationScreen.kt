@@ -906,6 +906,7 @@ private fun ExplanationErrorScreen(
 }
 
 private fun ExplanationResponse.toExplanationData(level: String): ExplanationData {
+    val parsedConceptItems = conceptExplanation.toContentItems()
     val parsedReviewItems = problemReview.toContentItems()
     val parsedConditionItems = conditionInterpretation.toContentItems()
     val parsedSolutionItems = solution.toContentItems()
@@ -930,11 +931,7 @@ private fun ExplanationResponse.toExplanationData(level: String): ExplanationDat
 
     return when (level) {
         "초급" -> ExplanationData(
-            conceptItems = listOf(
-                ContentItem.Text("이 문제는 합성함수와 삼각함수가 함께 나온 문제예요."),
-                ContentItem.Text("처음에는 식을 억지로 전개하지 말고, 안쪽 식의 구조와 특수값 대입부터 보는 것이 좋아요."),
-                ContentItem.Hint("핵심 개념: 합성함수의 미분, 삼각함수의 주기, 극대점 개수 세기")
-            ),
+            conceptItems = parsedConceptItems,
             section1Title = "문제 리뷰",
             section1 = reviewItems,
             section2Title = "문제 해석",
@@ -1316,19 +1313,6 @@ private fun StepsContent(
                             thickness = 0.5.dp
                         )
                     }
-
-                    // STEP 라벨만 표시 (숫자 배지 제거)
-                    Text(
-                        text = if (stepTitle.isBlank()) {
-                            "STEP ${stepIdx + 1}"
-                        } else {
-                            "STEP ${stepIdx + 1}. $stepTitle"
-                        },
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Blue600,
-                        modifier = Modifier.padding(bottom = 10.dp)
-                    )
 
                     // Step content items
                     stepItems.forEachIndexed { itemIdx, item ->
