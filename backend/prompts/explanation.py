@@ -66,12 +66,35 @@ EXPLANATION_PROMPT_STATISTICS_EASY = """<Role>
 <OutputContract>
 출력은 반드시 유효한 JSON 객체 하나만 생성한다.
 
-출력 JSON은 반드시 다음 세 필드만 가진다.
+출력 JSON은 반드시 다음과 같다.
 
 {
-  "problem_review": "...",
-  "condition_interpretation": "...",
-  "solution": "..."
+  "problem_review": ["..."],
+  "condition_interpretation": ["..."],
+  "solution": ["..."],
+  "answer": "..."
+}
+
+출력 예시 JSON은 다음과 같다.
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
+    {"type": "latex", "content": "x=0,\\;2"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
 }
 
 각 필드의 역할은 다음과 같다.
@@ -482,12 +505,34 @@ EXPLANATION_PROMPT_STATISTICS_MEDIUM = """<Role>
 <OutputContract>
 출력은 반드시 유효한 JSON 객체 하나만 생성한다.
 
-출력 JSON은 반드시 다음 세 필드만 가진다.
-
+출력 JSON은 반드시 다음과 같다.
 {
-  "problem_review": "...",
-  "condition_interpretation": "...",
-  "solution": "..."
+  "problem_review": ["..."],
+  "condition_interpretation": ["..."],
+  "solution": ["..."],
+  "answer": "..."
+}
+
+출력 예시 JSON은 다음과 같다.
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
+    {"type": "latex", "content": "x=0,\\;2"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
 }
 
 각 필드의 역할은 다음과 같다.
@@ -1250,15 +1295,36 @@ EXPLANATION_PROMPT_STATISTICS_KILLER = """<Role>
 <OutputContract>
  출력은 반드시 유효한 JSON 객체 하나만 생성한다.
 
-출력 JSON은 반드시 다음 세 필드만 가진다.
+출력 JSON은 반드시 다음과 같다.
+{
+  "problem_review": ["..."],
+  "condition_interpretation": ["..."],
+  "solution": ["..."],
+  "answer": "..."
+}
 
-{{
+출력 예시 JSON은 다음과 같다.
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
+    {"type": "latex", "content": "x=0,\\;2"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
+}
 
-"problem_review": "...",
-
-"condition_interpretation": "...",
-
-"solution": "..." }}
 
 각 필드의 역할은 다음과 같다.
 
@@ -4164,13 +4230,36 @@ EXPLANATION_PROMPT_GEOMETRY_EASY = """<Role>
 <OutputContract>
 출력은 반드시 유효한 JSON 객체 하나만 생성한다.
 
-출력 JSON은 반드시 다음 세 필드만 가진다.
-
+출력 JSON은 반드시 다음과 같다.
 {
-  "problem_review": "...",
-  "condition_interpretation": "...",
-  "solution": "..."
+  "problem_review": ["..."],
+  "condition_interpretation": ["..."],
+  "solution": ["..."],
+  "answer": "..."
 }
+
+출력 예시 JSON은 다음과 같다.
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
+    {"type": "latex", "content": "x=0,\\;2"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
+}
+
 
 각 필드의 역할은 다음과 같다.
 
@@ -4454,28 +4543,6 @@ solution에서 앞에서 만든 관계를 사용해 계산하고 답을 낸다.
 
 출력은 반드시 설정된 Output Schema를 따른다.
 
-<problem_review>
-[1. 문제 리뷰]에 해당하는 내용을 작성한다.
-제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-분수는 1/2, 곱셈은 ×로 쓴다.
-</problem_review>
-
-<condition_interpretation>
-[2. 조건 해석]에 해당하는 내용을 작성한다.
-제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-조건을 plain text 문장으로 설명한다.
-</condition_interpretation>
-
-<solution>
-[3. 문제 풀이]에 해당하는 내용을 작성한다.
-제목은 포함하지 않는다.
-LaTeX, 마크다운 수식, 문자 그대로의 \n 또는 \ 사용을 금지한다.
-마지막은 반드시 '답: ○○' 형식으로 끝낸다.
-</solution>
-
-각 필드는 반드시 문자열 형식으로 출력한다.
 
 JSON key는 반드시 다음 세 개만 사용한다.
 
@@ -4517,13 +4584,36 @@ EXPLANATION_PROMPT_GEOMETRY_MEDIUM = """<Role>
 <OutputContract>
 출력은 반드시 유효한 JSON 객체 하나만 생성한다.
 
-출력 JSON은 반드시 다음 세 필드만 가진다.
-
+출력 JSON은 반드시 다음과 같다.
 {
-  "problem_review": "...",
-  "condition_interpretation": "...",
-  "solution": "..."
+  "problem_review": ["..."],
+  "condition_interpretation": ["..."],
+  "solution": ["..."],
+  "answer": "..."
 }
+
+출력 예시 JSON은 다음과 같다.
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
+    {"type": "latex", "content": "x=0,\\;2"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
+}
+
 
 각 필드의 역할은 다음과 같다.
 
@@ -6542,15 +6632,125 @@ def build_explanation_chat_prompt(
     base_prompt = _escape_curly_braces(
         get_explanation_prompt(subject, difficulty, explanation_level)
     )
-    formula_format_guide = """
-### 수식 표기 규칙
-- 짧은 수식은 본문에 $...$ 형태로 자연스럽게 넣습니다.
-- 핵심 전개식, 분기점, 최종 결론식처럼 눈에 띄어야 하는 수식은 $$...$$로 한 줄씩 분리합니다.
-- 한 줄에 수식이 여러 개 있으면 가능한 한 줄씩 나눠서 씁니다.
-- 수식 주변 설명은 텍스트로 유지하고, 수식만 과하게 몰아 쓰지 않습니다.
-"""
+    output_contract = _escape_curly_braces("""
+<OutputContract>
+아래 OutputContract는 기존 프롬프트 안의 JSON 형식, 답 표기 형식, 수식 delimiter 규칙보다 우선한다.
+
+너의 출력은 반드시 JSON 객체 하나만이어야 한다.
+JSON 밖에 설명, 마크다운 코드블록, 주석, 추가 문장을 절대 쓰지 마라.
+
+최상위 JSON 구조는 반드시 다음 필드를 가진다.
+
+{
+  "problem_review": [],
+  "condition_interpretation": [],
+  "solution": [],
+  "answer": ""
+}
+
+각 필드의 의미는 다음과 같다.
+
+- "problem_review": 문제 리뷰
+- "condition_interpretation": 조건 해석
+- "solution": 문제풀이
+- "answer": 최종 정답
+
+"problem_review", "condition_interpretation", "solution"은 모두 block 배열이다.
+각 block은 반드시 다음 두 종류 중 하나여야 한다.
+
+1. text block
+2. latex block
+
+text block은 설명 문장을 담는다.
+text block의 형식은 반드시 다음과 같다.
+
+{
+  "type": "text",
+  "content": "설명 문장"
+}
+
+latex block은 수식만 담는다.
+latex block의 형식은 반드시 다음과 같다.
+
+{
+  "type": "latex",
+  "content": "순수 LaTeX body"
+}
+
+중요 규칙:
+
+1. section 배열 안에서 text block과 latex block을 자연스러운 순서로 번갈아 작성하라.
+2. text block에는 설명 문장만 작성하라. 수식, 변수식, 계산식을 넣지 마라.
+3. latex block에는 수식만 작성하라. 설명 문장을 넣지 마라.
+4. latex block에는 절대 수식 delimiter를 넣지 마라.
+금지: "$...$", "$$...$$", "\\(...\\)", "\\[...\\]"
+5. JSON 문자열 안에서 LaTeX 백슬래시는 반드시 한 번만 이스케이프하라.
+좋은 예: "\\frac{1}{2}", "\\sqrt{x}", "\\sin x", "\\int_0^1 x^2\\,dx"
+금지: "\\\\sin", "\\\\cos", "\\\\pi", "\\\\alpha"처럼 과하게 이스케이프하지 마라.
+6. 같은 section에서 latex block을 연속으로 2개 이상 쓰지 마라. 중간에 설명 text block을 넣어라.
+7. 한 latex block에는 의미상 하나의 식 또는 한 줄 계산만 넣어라.
+8. 긴 계산식, 도함수 전체 식, 여러 단계 전개식도 latex block으로 작성하되, 앞뒤에 설명 text block을 둬라.
+9. block 배열은 text, latex, text, latex처럼 여러 번 번갈아 나올 수 있다.
+10. 각 section에는 최소 1개의 text block과 최소 1개의 latex block을 넣어라.
+11. "answer"에는 최종 답만 간단히 넣어라.
+객관식이면 보기 번호를 문자열로 넣고, 단답형이면 최종 값을 문자열로 넣어라.
+12. 출력은 반드시 JSON으로 파싱 가능해야 한다.
+trailing comma를 쓰지 마라.
+single quote를 쓰지 마라.
+모든 key와 string은 double quote를 사용하라.
+
+간단한 출력 예시는 다음과 같다.
+
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 도함수를 이용해 극값 후보를 찾는 문제입니다."},
+    {"type": "latex", "content": "f'(x)=0"},
+    {"type": "text", "content": "을 만족하는 지점을 먼저 찾으면 됩니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "주어진 함수의 도함수를 계산합니다."},
+    {"type": "latex", "content": "f'(x)=3x^2-6x"},
+    {"type": "text", "content": "이 식을 인수분해하면 후보 지점이 드러납니다."}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+    {"type": "latex", "content": "3x^2-6x=3x(x-2)=0"},
+    {"type": "text", "content": "따라서 후보는 다음과 같습니다."},
+    {"type": "latex", "content": "x=0,\\;2"},
+    {"type": "text", "content": "부호 변화를 확인해 최종 답을 결정합니다."}
+  ],
+  "answer": "2"
+}
+
+번갈아 나오는 출력 예시는 다음과 같다.
+
+{
+  "problem_review": [
+    {"type": "text", "content": "이 문제는 합성삼각함수의 내부 각을 먼저 정리하는 문제입니다."},
+    {"type": "latex", "content": "f(x)=\\sin(ax+b+\\sin x)"},
+    {"type": "text", "content": "조건이 내부 각의 구조를 제한하므로 상수 조건을 먼저 봅니다."}
+  ],
+  "condition_interpretation": [
+    {"type": "text", "content": "조건을 대입하면 먼저 다음 관계가 나옵니다."},
+    {"type": "latex", "content": "f(0)=\\sin b=0"},
+    {"type": "text", "content": "따라서 상수 b는 다음처럼 둘 수 있습니다."},
+    {"type": "latex", "content": "b=k\\pi"},
+    {"type": "text", "content": "다음 조건도 같은 방식으로 정리합니다."},
+    {"type": "latex", "content": "f(2\\pi)=\\sin(2\\pi a+b)"}
+  ],
+  "solution": [
+    {"type": "text", "content": "도함수를 계산해 극대 조건을 확인합니다."},
+    {"type": "latex", "content": "f'(x)=\\cos(ax+b+\\sin x)(a+\\cos x)"},
+    {"type": "text", "content": "내부 각을 새 함수로 두면 구간 분석이 쉬워집니다."},
+    {"type": "latex", "content": "g(x)=\\frac{3}{2}x-3\\pi+\\sin x"},
+    {"type": "text", "content": "구간 끝값을 비교해 극대 후보를 셉니다."}
+  ],
+  "answer": "17"
+}
+</OutputContract>
+""")
     messages = [
-        ("system", base_prompt + formula_format_guide),
+        ("system", base_prompt + "\n" + output_contract),
         (
             "human",
             """문제:
@@ -6560,9 +6760,9 @@ def build_explanation_chat_prompt(
 
 주의사항:
 - {answer_format}
-- 수식은 반드시 LaTeX 형식으로 작성하세요.
-- 짧은 수식은 $...$로, 핵심 수식은 $$...$$로 구분하세요.
-- 위 형식에 맞춰 JSON으로 출력하세요.
+- 수식은 반드시 OutputContract의 latex block에 순수 LaTeX body로 작성하세요.
+- 수식 delimiter($, $$, \\(\\), \\[\\])는 절대 쓰지 마세요.
+- 위 OutputContract 형식에 맞춰 JSON으로 출력하세요.
 """,
         )
     ]

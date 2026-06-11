@@ -9,6 +9,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import android.util.Log
 
 class MathExplanationApiClient(
     baseUrl: String,
@@ -26,6 +27,7 @@ class MathExplanationApiClient(
 
             client.newCall(httpRequest).execute().use { response ->
                 val body = response.body?.string().orEmpty()
+                Log.d("ExplainApiRaw", body)
                 if (!response.isSuccessful) {
                     val message = parseErrorMessage(body)
                     throw IOException("API ${response.code}: $message")

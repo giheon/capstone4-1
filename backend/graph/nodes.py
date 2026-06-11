@@ -174,6 +174,212 @@ def _parse_jsonish_response(result: Any, *, stage: str) -> dict:
     raise ValueError(f"{stage}: Invalid json output: {text[:1200]}")
 
 
+def _strip_math_delimiters(value: Any) -> str:
+    text = str(value or "").strip()
+    delimiter_pairs = (
+        ("$$", "$$"),
+        ("$", "$"),
+        ("\\(", "\\)"),
+        ("\\[", "\\]"),
+    )
+    changed = True
+    while changed:
+        changed = False
+        for prefix, suffix in delimiter_pairs:
+            if text.startswith(prefix) and text.endswith(suffix) and len(text) > len(prefix) + len(suffix):
+                text = text[len(prefix) : -len(suffix)].strip()
+                changed = True
+    return text
+
+
+def _normalize_latex_body(value: Any) -> str:
+    """Normalize a LaTeX body after JSON parsing without changing math semantics."""
+    text = _strip_math_delimiters(value)
+    # LLMs sometimes emit JSON that decodes to "\\sin" instead of "\sin".
+    # Collapse only duplicated command escapes, not LaTeX line breaks "\\".
+    text = re.sub(r"\\\\(?=[A-Za-z])", r"\\", text)
+    return text
+
+
+def _merge_inline_spans(spans: List[dict]) -> List[dict]:
+    merged: List[dict] = []
+    for span in spans:
+        span_type = span.get("type")
+        text = str(span.get("text", ""))
+        if not text:
+            continue
+
+        if merged and merged[-1].get("type") == span_type:
+            separator = " " if span_type == "latex" else ""
+            merged[-1]["text"] = str(merged[-1].get("text", "")) + separator + text
+        else:
+            merged.append({"type": span_type, "text": text})
+
+    return merged
+
+
+def _merge_flat_blocks(blocks: List[dict]) -> List[dict]:
+    merged: List[dict] = []
+    for block in blocks:
+        block_type = block.get("type")
+        content = str(block.get("content", ""))
+        if not content:
+            continue
+
+        if merged and merged[-1].get("type") == block_type:
+            separator = " " if block_type == "latex" else ""
+            merged[-1]["content"] = str(merged[-1].get("content", "")) + separator + content
+        else:
+            merged.append({"type": block_type, "content": content})
+
+    return merged
+
+
+def _text_span_contains_math(text: str) -> bool:
+    """Detect math that should have been emitted as a latex block."""
+    patterns = (
+        r"\b(?:sin|cos|tan|log|ln)\s*\(?\s*[A-Za-z0-9\\]",
+        r"\b\d*\s*pi\b",
+        r"\b[a-zA-Z]\s*=\s*[-+]?\d",
+        r"\b(?:f|g|h)\s*'?\s*\([^)]*\)\s*[=<>]",
+        r"\b[a-zA-Z]+_[0-9A-Za-z]+\b",
+    )
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
+def _legacy_line_to_blocks(line: str) -> List[dict]:
+    stripped = line.strip()
+    if not stripped:
+        return []
+
+    display_patterns = (
+        ("$$", "$$"),
+        ("\\[", "\\]"),
+    )
+    for prefix, suffix in display_patterns:
+        if stripped.startswith(prefix) and stripped.endswith(suffix):
+            return [{"type": "latex", "content": _normalize_latex_body(stripped)}]
+
+    pattern = re.compile(r"\$\$(.+?)\$\$|\$(.+?)\$|\\\((.+?)\\\)|\\\[(.+?)\\\]", re.DOTALL)
+    blocks: List[dict] = []
+    last_index = 0
+    for match in pattern.finditer(line):
+        before = line[last_index : match.start()]
+        if before:
+            blocks.append({"type": "text", "content": before})
+
+        latex = next((group for group in match.groups() if group), "")
+        if latex:
+            blocks.append({"type": "latex", "content": _normalize_latex_body(latex)})
+        last_index = match.end()
+
+    remaining = line[last_index:]
+    if remaining:
+        blocks.append({"type": "text", "content": remaining})
+
+    if not blocks:
+        blocks.append({"type": "text", "content": line})
+
+    return _merge_flat_blocks(blocks)
+
+
+def _normalize_span(span: Any) -> dict | None:
+    if isinstance(span, dict):
+        span_type = span.get("type")
+        text = span.get("text", span.get("content", ""))
+        if span_type == "latex":
+            latex = _normalize_latex_body(text)
+            return {"type": "latex", "text": latex} if latex else None
+        if span_type == "text":
+            text = str(text or "")
+            return {"type": "text", "text": text} if text else None
+        return None
+
+    text = str(span or "")
+    return {"type": "text", "text": text} if text else None
+
+
+def _normalize_block(block: Any) -> List[dict]:
+    if isinstance(block, str):
+        lines = [line for line in block.replace("\\n", "\n").splitlines() if line.strip()]
+        blocks: List[dict] = []
+        for line in lines:
+            blocks.extend(_legacy_line_to_blocks(line))
+        return blocks
+
+    if not isinstance(block, dict):
+        return []
+
+    block_type = block.get("type")
+    if block_type == "math":
+        content = _normalize_latex_body(block.get("content", ""))
+        return [{"type": "latex", "content": content}] if content else []
+
+    if block_type == "paragraph":
+        raw_content = block.get("content", [])
+        if isinstance(raw_content, str):
+            raw_content = [{"type": "text", "text": raw_content}]
+        if not isinstance(raw_content, list):
+            return []
+
+        spans = []
+        for span in raw_content:
+            normalized = _normalize_span(span)
+            if normalized:
+                spans.append(normalized)
+
+        spans = _merge_inline_spans(spans)
+        return [
+            {"type": span["type"], "content": span["text"]}
+            for span in spans
+            if span.get("type") in {"text", "latex"} and span.get("text")
+        ]
+
+    if block_type == "text":
+        text = str(block.get("content", block.get("text", "")))
+        return [{"type": "text", "content": text}] if text else []
+
+    if block_type == "latex":
+        latex = _normalize_latex_body(block.get("content", block.get("text", "")))
+        return [{"type": "latex", "content": latex}] if latex else []
+
+    return []
+
+
+def _normalize_blocks(value: Any) -> List[dict]:
+    if isinstance(value, list):
+        blocks: List[dict] = []
+        for block in value:
+            blocks.extend(_normalize_block(block))
+        return _merge_flat_blocks(blocks)
+
+    if isinstance(value, str):
+        return _normalize_block(value)
+
+    return []
+
+
+def _blocks_to_plain_text(blocks: List[dict]) -> str:
+    parts: List[str] = []
+    for block in blocks:
+        if block.get("type") in {"math", "latex", "text"}:
+            parts.append(str(block.get("content", "")))
+        elif block.get("type") == "paragraph":
+            for span in block.get("content", []):
+                parts.append(str(span.get("text", "")))
+    return " ".join(part for part in parts if part).strip()
+
+
+def _iter_latex_bodies(blocks: List[dict]):
+    for block in blocks:
+        if block.get("type") in {"math", "latex"}:
+            yield str(block.get("content", ""))
+        elif block.get("type") == "paragraph":
+            for span in block.get("content", []):
+                if span.get("type") == "latex":
+                    yield str(span.get("text", ""))
+
+
 def _stage_timing(state: Dict[str, Any], stage_name: str, started_at: float) -> Dict[str, float]:
     timings = dict(state.get("stage_timings", {}))
     timings[stage_name] = round((time.perf_counter() - started_at) * 1000, 1)
@@ -387,7 +593,7 @@ async def generate_single_explanation(
             {
                 "problem_text": problem_text,
                 "question_type_label": "객관식" if question_type == "objective" else "주관식",
-                "answer_format": "객관식이면 '답: ②', 주관식이면 '답: {숫자}' 형식으로 solution 마지막에 작성하세요.",
+                "answer_format": "객관식이면 answer에 '②'처럼 보기 기호만, 주관식이면 answer에 최종 값만 작성하세요.",
             },
             config={
                 "run_name": f"generate_explanation_candidate_{candidate_index + 1}",
@@ -406,15 +612,20 @@ async def generate_single_explanation(
         )
         result = _parse_jsonish_response(raw_result, stage="ExplanationGeneration")
 
-        # 답 추출
-        solution = result.get("solution", "")
-        extracted_answer = extract_answer(solution)
+        problem_review = _normalize_blocks(result.get("problem_review", []))
+        condition_interpretation = _normalize_blocks(
+            result.get("condition_interpretation", result.get("condition_analysis", []))
+        )
+        solution = _normalize_blocks(result.get("solution", []))
+        answer = str(result.get("answer", "") or "").strip()
+        extracted_answer = answer or extract_answer(_blocks_to_plain_text(solution))
 
         candidate = dict(result)
         candidate.update({
-            "problem_review": result.get("problem_review", ""),
-            "condition_interpretation": result.get("condition_interpretation", ""),
+            "problem_review": problem_review,
+            "condition_interpretation": condition_interpretation,
             "solution": solution,
+            "answer": extracted_answer,
             "key_points": result.get("key_points", ""),
             "approach_perspectives": result.get("approach_perspectives", ""),
             "transferable_insight": result.get("transferable_insight", ""),
@@ -426,9 +637,10 @@ async def generate_single_explanation(
 
     except Exception as e:
         return {
-            "problem_review": "",
-            "condition_interpretation": "",
-            "solution": "",
+            "problem_review": [],
+            "condition_interpretation": [],
+            "solution": [],
+            "answer": "",
             "key_points": "",
             "approach_perspectives": "",
             "transferable_insight": "",
@@ -513,19 +725,45 @@ async def explanation_generation_node(state: MathExplanationState) -> Dict[str, 
 # ═══════════════════════════════════════════════════════════════════════════
 
 def validate_json_structure(candidate: dict) -> bool:
-    """JSON 구조 검증 - 필수 필드 존재 여부"""
-    legacy_keys = ["problem_review", "condition_interpretation", "solution"]
-    advanced_keys = ["key_points", "approach_perspectives", "transferable_insight"]
+    """OutputContract block 구조 검증."""
+    def _is_valid_span(span: Any) -> bool:
+        if (
+            not isinstance(span, dict)
+            or span.get("type") not in {"text", "latex"}
+            or not isinstance(span.get("text"), str)
+            or not span.get("text", "").strip()
+        ):
+            return False
 
-    def _has_nonempty_strings(keys: List[str]) -> bool:
-        return all(
-            key in candidate and
-            isinstance(candidate.get(key), str) and
-            len(candidate.get(key, "").strip()) > 0
-            for key in keys
-        )
+        if span.get("type") == "text" and _text_span_contains_math(span.get("text", "")):
+            return False
 
-    return _has_nonempty_strings(legacy_keys) or _has_nonempty_strings(advanced_keys)
+        return True
+
+    def _is_valid_block(block: Any) -> bool:
+        if not isinstance(block, dict):
+            return False
+        if block.get("type") in {"math", "latex"}:
+            return isinstance(block.get("content"), str) and bool(block.get("content", "").strip())
+        if block.get("type") == "text":
+            content = block.get("content")
+            return (
+                isinstance(content, str)
+                and bool(content.strip())
+                and not _text_span_contains_math(content)
+            )
+        if block.get("type") == "paragraph":
+            content = block.get("content")
+            return isinstance(content, list) and bool(content) and all(_is_valid_span(span) for span in content)
+        return False
+
+    required_keys = ["problem_review", "condition_interpretation", "solution"]
+    return all(
+        isinstance(candidate.get(key), list)
+        and bool(candidate.get(key))
+        and all(_is_valid_block(block) for block in candidate.get(key, []))
+        for key in required_keys
+    )
 
 
 def validate_answer_format(extracted_answer: str, question_type: str) -> bool:
@@ -539,47 +777,48 @@ def validate_answer_format(extracted_answer: str, question_type: str) -> bool:
     if question_type == "objective":
         # OCR이 객관식이라고 판단 → 답이 ①②③④⑤ 중 하나여야 통과
         return extracted_answer in ["①", "②", "③", "④", "⑤"]
-    else:
-        # OCR이 주관식이라고 판단 → 답이 숫자여야 통과
-        return extracted_answer.isdigit()
+
+    # 주관식은 정수뿐 아니라 분수, 루트, 파이 포함 답도 가능하므로 비어 있지만 않으면 통과시킨다.
+    return bool(extracted_answer.strip())
 
 
 def validate_latex(candidate: dict) -> bool:
     """
     LaTeX 문법 검증
-    기본적인 LaTeX 패턴이 올바른지 확인
+    OutputContract의 latex block에는 delimiter가 없어야 하며 괄호가 맞아야 한다.
     """
-    full_text = (
-        candidate.get("problem_review", "") +
-        candidate.get("condition_interpretation", "") +
-        candidate.get("solution", "") +
-        candidate.get("key_points", "") +
-        candidate.get("approach_perspectives", "") +
-        candidate.get("transferable_insight", "")
-    )
+    sections = [
+        candidate.get("problem_review", []),
+        candidate.get("condition_interpretation", []),
+        candidate.get("solution", []),
+    ]
 
-    # $...$ 패턴 추출
-    latex_patterns = re.findall(r'\$[^$]+\$', full_text)
-
-    # 기본적인 검증: 열고 닫는 괄호 매칭
-    for pattern in latex_patterns:
-        content = pattern[1:-1]  # $ 제거
-
-        # 괄호 매칭 검사
-        brackets = {'(': ')', '[': ']', '{': '}'}
-        stack = []
-        for char in content:
-            if char in brackets:
-                stack.append(char)
-            elif char in brackets.values():
-                if not stack:
-                    return False
-                expected = brackets[stack.pop()]
-                if char != expected:
-                    return False
-
-        if stack:  # 닫히지 않은 괄호가 있음
+    for blocks in sections:
+        if not isinstance(blocks, list):
             return False
+        for content in _iter_latex_bodies(blocks):
+            if not content.strip():
+                return False
+            if any(delimiter in content for delimiter in ("$", "\\(", "\\)", "\\[", "\\]")):
+                return False
+
+            brackets = {'(': ')', '[': ']', '{': '}'}
+            stack = []
+            for char in content:
+                if char in brackets:
+                    stack.append(char)
+                elif char in brackets.values():
+                    if not stack:
+                        return False
+                    expected = brackets[stack.pop()]
+                    if char != expected:
+                        return False
+
+            if stack:  # 닫히지 않은 괄호가 있음
+                return False
+
+            if content.count("\\left") != content.count("\\right"):
+                return False
 
     return True
 
@@ -707,13 +946,13 @@ def _build_final_output(
         "majority_candidates": majority_candidates,
         "validation_results": validation_results,
         "selected_explanation": selected,
-        "problem_review": selected.get("problem_review", ""),
-        "condition_interpretation": selected.get("condition_interpretation", ""),
-        "solution": selected.get("solution", ""),
+        "problem_review": selected.get("problem_review", []),
+        "condition_interpretation": selected.get("condition_interpretation", []),
+        "solution": selected.get("solution", []),
         "key_points": selected.get("key_points", ""),
         "approach_perspectives": selected.get("approach_perspectives", ""),
         "transferable_insight": selected.get("transferable_insight", ""),
-        "answer": selected.get("extracted_answer", ""),
+        "answer": selected.get("answer", selected.get("extracted_answer", "")),
         "is_complete": True
     }
 
@@ -725,9 +964,9 @@ def _build_error_output(error_message: str) -> Dict[str, Any]:
         "majority_candidates": [],
         "validation_results": [],
         "selected_explanation": {},
-        "problem_review": "",
-        "condition_interpretation": "",
-        "solution": "",
+        "problem_review": [],
+        "condition_interpretation": [],
+        "solution": [],
         "key_points": "",
         "approach_perspectives": "",
         "transferable_insight": "",

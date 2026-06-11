@@ -129,9 +129,9 @@ class ExplanationResponse(BaseModel):
     selected_model: str  # 사용된 모델
 
     # 최종 해설
-    problem_review: str  # [1. 문제 리뷰]
-    condition_interpretation: str  # [2. 조건 해석]
-    solution: str  # [3. 문제 풀이]
+    problem_review: List[Dict[str, Any]]  # [1. 문제 리뷰]
+    condition_interpretation: List[Dict[str, Any]]  # [2. 조건 해석]
+    solution: List[Dict[str, Any]]  # [3. 문제 풀이]
     key_points: str = ""
     approach_perspectives: str = ""
     transferable_insight: str = ""
@@ -221,9 +221,9 @@ async def generate_explanation(request: ExplanationRequest):
             borderline_with=result.get("borderline_with", "none"),
             borderline_reason=result.get("borderline_reason", ""),
             selected_model=result.get("selected_model", ""),
-            problem_review=result.get("problem_review", ""),
-            condition_interpretation=result.get("condition_interpretation", ""),
-            solution=result.get("solution", ""),
+            problem_review=result.get("problem_review", []),
+            condition_interpretation=result.get("condition_interpretation", []),
+            solution=result.get("solution", []),
             key_points=result.get("key_points", ""),
             approach_perspectives=result.get("approach_perspectives", ""),
             transferable_insight=result.get("transferable_insight", ""),
@@ -426,9 +426,26 @@ async def test_mock_explanation(
         "borderline_with": "none",
         "borderline_reason": "",
         "selected_model": "gpt-5.4-nano",
-        "problem_review": "3차 함수의 극값을 구하는 문제입니다. $f'(x) = 0$인 점에서 극값 후보를 찾고, 부호 변화를 확인합니다.",
-        "condition_interpretation": "$f(x) = x^3 - 3x^2 + 2$는 3차 함수이며, 미분하면 $f'(x) = 3x^2 - 6x$입니다.",
-        "solution": "$f'(x) = 3x^2 - 6x = 3x(x-2) = 0$에서 $x = 0$ 또는 $x = 2$입니다.\n\n$x = 0$에서 $f'(x)$의 부호가 양에서 음으로 바뀌므로 극대입니다.\n\n$f(0) = 0 - 0 + 2 = 2$\n\n따라서 극댓값은 2입니다.\n\n답: 2",
+        "problem_review": [
+            {"type": "text", "content": "3차 함수의 극값을 구하는 문제입니다."},
+            {"type": "latex", "content": "f'(x)=0"},
+            {"type": "text", "content": "인 점에서 극값 후보를 찾고, 부호 변화를 확인합니다."}
+        ],
+        "condition_interpretation": [
+            {"type": "text", "content": "주어진 함수는 다음과 같습니다."},
+            {"type": "latex", "content": "f(x)=x^3-3x^2+2"},
+            {"type": "text", "content": "미분하면 다음 식을 얻습니다."},
+            {"type": "latex", "content": "f'(x)=3x^2-6x"}
+        ],
+        "solution": [
+            {"type": "text", "content": "도함수가 0이 되는 지점을 구합니다."},
+            {"type": "latex", "content": "f'(x)=3x^2-6x=3x(x-2)=0"},
+            {"type": "text", "content": "따라서 후보는 다음 두 점입니다."},
+            {"type": "latex", "content": "x=0,\\;2"},
+            {"type": "text", "content": "부호 변화를 확인하면 첫 번째 점에서 극대입니다."},
+            {"type": "latex", "content": "f(0)=0-0+2=2"},
+            {"type": "text", "content": "따라서 극댓값은 2입니다."}
+        ],
         "answer": "2",
         "majority_answer": "2",
         "is_complete": True,

@@ -170,9 +170,9 @@ async def stream_explanation_workflow(
                     "status": "완료",
                     "data": {
                         "majority_answer": node_output.get("majority_answer", ""),
-                        "problem_review": node_output.get("problem_review", ""),
-                        "condition_interpretation": node_output.get("condition_interpretation", ""),
-                        "solution": node_output.get("solution", ""),
+                        "problem_review": node_output.get("problem_review", []),
+                        "condition_interpretation": node_output.get("condition_interpretation", []),
+                        "solution": node_output.get("solution", []),
                         "answer": node_output.get("answer", ""),
                         "validation_results": node_output.get("validation_results", [])
                     }

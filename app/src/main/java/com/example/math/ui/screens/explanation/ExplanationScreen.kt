@@ -22,8 +22,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.math.data.api.ExplanationBlock as ApiExplanationBlock
 import com.example.math.data.api.ExplanationResponse
+import com.example.math.data.api.InlineSpan as ApiInlineSpan
 import com.example.math.ui.components.LatexFormula
+import com.example.math.ui.components.LatexParagraph
+import com.example.math.ui.components.LatexParagraphSpan
 import com.example.math.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -126,205 +130,32 @@ fun InlineRichLine(
     lineHeight: androidx.compose.ui.unit.TextUnit = 22.sp,
     onComplete: () -> Unit = {}
 ) {
-    LaunchedEffect(parts) {
-        onComplete()
-    }
+    val cssFontSize = fontSize.value.takeIf { it > 0f } ?: 14f
+    val cssLineHeight = (lineHeight.value / cssFontSize).takeIf { it > 0f } ?: 1.55f
 
-    val renderedText = remember(parts) {
-        buildString {
-            parts.forEach { part ->
-                when (part) {
-                    is InlinePart.Text -> append(part.text)
-                    is InlinePart.Formula -> append(renderInlineFormula(part.latex))
-                }
+    LatexParagraph(
+        spans = parts.map { part ->
+            when (part) {
+                is InlinePart.Text -> LatexParagraphSpan.Text(part.text)
+                is InlinePart.Formula -> LatexParagraphSpan.Math(part.latex)
             }
-        }
-    }
-
-    Text(
-        text = renderedText,
-        color = color,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-        lineHeight = lineHeight,
-        modifier = Modifier.fillMaxWidth(),
-        softWrap = true
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp),
+        textColor = color.toCssRgba(),
+        fontSizePx = cssFontSize.toInt(),
+        fontWeight = fontWeight.weight,
+        lineHeight = cssLineHeight,
+        onRendered = onComplete
     )
 }
 
-private fun renderInlineFormula(latex: String): String {
-    var text = latex
-
-    text = text.trim()
-    text = text.removePrefix("$$").removeSuffix("$$").trim()
-    text = text.removePrefix("\\[").removeSuffix("\\]").trim()
-    text = text.removePrefix("\\(").removeSuffix("\\)").trim()
-    text = text.removePrefix("$").removeSuffix("$").trim()
-
-    val greekMap = linkedMapOf(
-        "\\alpha" to "α",
-        "\\beta" to "β",
-        "\\gamma" to "γ",
-        "\\delta" to "δ",
-        "\\epsilon" to "ε",
-        "\\theta" to "θ",
-        "\\lambda" to "λ",
-        "\\mu" to "μ",
-        "\\pi" to "π",
-        "\\sigma" to "σ",
-        "\\tau" to "τ",
-        "\\phi" to "φ",
-        "\\psi" to "ψ",
-        "\\omega" to "ω",
-        "\\Delta" to "Δ",
-        "\\Theta" to "Θ",
-        "\\Pi" to "Π",
-        "\\Sigma" to "Σ",
-        "\\Phi" to "Φ",
-        "\\Psi" to "Ψ",
-        "\\Omega" to "Ω"
-    )
-    greekMap.forEach { (latexName, unicode) ->
-        text = text.replace(latexName, unicode)
-    }
-
-    val plainCommands = linkedMapOf(
-        "\\sin" to "sin",
-        "\\cos" to "cos",
-        "\\tan" to "tan",
-        "\\cot" to "cot",
-        "\\sec" to "sec",
-        "\\csc" to "csc",
-        "\\log" to "log",
-        "\\ln" to "ln",
-        "\\lim" to "lim",
-        "\\max" to "max",
-        "\\min" to "min",
-        "\\to" to "→",
-        "\\rightarrow" to "→",
-        "\\leftarrow" to "←",
-        "\\leftrightarrow" to "↔",
-        "\\cdot" to "·",
-        "\\times" to "×",
-        "\\pm" to "±",
-        "\\leq" to "≤",
-        "\\geq" to "≥",
-        "\\neq" to "≠"
-    )
-    plainCommands.forEach { (latexName, unicode) ->
-        text = text.replace(latexName, unicode)
-    }
-
-    repeat(3) {
-        text = text.replace(
-            Regex("""\\frac\{([^{}]+)\}\{([^{}]+)\}""")
-        ) { match ->
-            val numerator = match.groupValues[1].trim()
-            val denominator = match.groupValues[2].trim()
-            "($numerator/$denominator)"
-        }
-        text = text.replace(
-            Regex("""\\sqrt\{([^{}]+)\}""")
-        ) { match ->
-            "√${match.groupValues[1].trim()}"
-        }
-    }
-
-    text = text.replace(
-        Regex("""\\sqrt\s*([0-9a-zA-Zα-ωΑ-Ω]+)""")
-    ) { match ->
-        "√${match.groupValues[1].trim()}"
-    }
-
-    text = text.replace(Regex("""\^\{?([0-9a-zA-Z]+)\}?""")) { match ->
-        match.groupValues[1].map { toSuperscriptChar(it) }.joinToString("")
-    }
-    text = text.replace(Regex("""_\{?([0-9a-zA-Z]+)\}?""")) { match ->
-        match.groupValues[1].map { toSubscriptChar(it) }.joinToString("")
-    }
-
-    text = text.replace("\\left(", "(").replace("\\right)", ")")
-    text = text.replace("\\left[", "[").replace("\\right]", "]")
-    text = text.replace("\\left\\{", "{").replace("\\right\\}", "}")
-    text = text.replace("\\,", " ")
-    text = text.replace("\\;", " ")
-    text = text.replace("\\!", "")
-    text = text.replace("\\ ", " ")
-    text = text.replace(Regex("""\\([a-zA-Z]+)"""), "$1")
-    text = text.replace("{", "").replace("}", "")
-    text = text.replace(Regex("""\s+"""), " ").trim()
-
-    return text
-}
-
-private fun toSuperscriptChar(ch: Char): Char = when (ch) {
-    '0' -> '⁰'
-    '1' -> '¹'
-    '2' -> '²'
-    '3' -> '³'
-    '4' -> '⁴'
-    '5' -> '⁵'
-    '6' -> '⁶'
-    '7' -> '⁷'
-    '8' -> '⁸'
-    '9' -> '⁹'
-    'a' -> 'ᵃ'
-    'b' -> 'ᵇ'
-    'c' -> 'ᶜ'
-    'd' -> 'ᵈ'
-    'e' -> 'ᵉ'
-    'f' -> 'ᶠ'
-    'g' -> 'ᵍ'
-    'h' -> 'ʰ'
-    'i' -> 'ⁱ'
-    'j' -> 'ʲ'
-    'k' -> 'ᵏ'
-    'l' -> 'ˡ'
-    'm' -> 'ᵐ'
-    'n' -> 'ⁿ'
-    'o' -> 'ᵒ'
-    'p' -> 'ᵖ'
-    'r' -> 'ʳ'
-    's' -> 'ˢ'
-    't' -> 'ᵗ'
-    'u' -> 'ᵘ'
-    'v' -> 'ᵛ'
-    'w' -> 'ʷ'
-    'x' -> 'ˣ'
-    'y' -> 'ʸ'
-    'z' -> 'ᶻ'
-    else -> ch
-}
-
-private fun toSubscriptChar(ch: Char): Char = when (ch) {
-    '0' -> '₀'
-    '1' -> '₁'
-    '2' -> '₂'
-    '3' -> '₃'
-    '4' -> '₄'
-    '5' -> '₅'
-    '6' -> '₆'
-    '7' -> '₇'
-    '8' -> '₈'
-    '9' -> '₉'
-    'a' -> 'ₐ'
-    'e' -> 'ₑ'
-    'h' -> 'ₕ'
-    'i' -> 'ᵢ'
-    'j' -> 'ⱼ'
-    'k' -> 'ₖ'
-    'l' -> 'ₗ'
-    'm' -> 'ₘ'
-    'n' -> 'ₙ'
-    'o' -> 'ₒ'
-    'p' -> 'ₚ'
-    'r' -> 'ᵣ'
-    's' -> 'ₛ'
-    't' -> 'ₜ'
-    'u' -> 'ᵤ'
-    'v' -> 'ᵥ'
-    'x' -> 'ₓ'
-    else -> ch
+private fun Color.toCssRgba(): String {
+    val red = (red * 255).toInt().coerceIn(0, 255)
+    val green = (green * 255).toInt().coerceIn(0, 255)
+    val blue = (blue * 255).toInt().coerceIn(0, 255)
+    return "rgba($red, $green, $blue, $alpha)"
 }
 
 // 힌트/안내 박스 (부드러운 파란색)
@@ -1075,18 +906,23 @@ private fun ExplanationErrorScreen(
 }
 
 private fun ExplanationResponse.toExplanationData(level: String): ExplanationData {
-    val reviewItems = problemReview.toContentItems()
+    val parsedReviewItems = problemReview.toContentItems()
+    val parsedConditionItems = conditionInterpretation.toContentItems()
+    val parsedSolutionItems = solution.toContentItems()
+
+    val reviewItems = parsedReviewItems
         .ifEmpty { listOf(ContentItem.Text("문제 리뷰가 비어 있습니다.")) }
-    val conditionItems = conditionInterpretation.toContentItems()
+    val conditionItems = parsedConditionItems
         .ifEmpty { listOf(ContentItem.Text("조건 해석이 비어 있습니다.")) }
-    val solutionItems = solution.toContentItems().toMutableList()
-    val keyPointItems = keyPoints.toContentItems().ifEmpty { reviewItems }
-    val approachItems = approachPerspectives.toContentItems().ifEmpty { conditionItems }
-    val transferableItems = transferableInsight.toContentItems().ifEmpty { solutionItems }
+    val solutionItems = parsedSolutionItems.toMutableList()
 
     if (answer.isNotBlank() && solutionItems.none { it is ContentItem.Answer }) {
         solutionItems.add(ContentItem.Answer("답: $answer"))
     }
+
+    val keyPointItems = parsedReviewItems.ifEmpty { keyPoints.toContentItems() }.ifEmpty { reviewItems }
+    val approachItems = parsedConditionItems.ifEmpty { approachPerspectives.toContentItems() }.ifEmpty { conditionItems }
+    val transferableItems = solutionItems.ifEmpty { transferableInsight.toContentItems() }
 
     val baseSolutionItems = solutionItems.ifEmpty {
         listOf(ContentItem.Text("문제 풀이가 비어 있습니다."))
@@ -1124,6 +960,40 @@ private fun ExplanationResponse.toExplanationData(level: String): ExplanationDat
             stepsTitle = "문제 풀이",
             steps = listOf("문제 풀이" to baseSolutionItems)
         )
+    }
+}
+
+private fun List<ApiExplanationBlock>.toContentItems(): List<ContentItem> {
+    return flatMap { block ->
+        when (block) {
+            is ApiExplanationBlock.Paragraph -> {
+                val parts = block.content.mapNotNull { span ->
+                    when (span) {
+                        is ApiInlineSpan.Text -> {
+                            if (span.text.isBlank()) null else InlinePart.Text(span.text)
+                        }
+                        is ApiInlineSpan.Latex -> {
+                            if (span.text.isBlank()) null else InlinePart.Formula(span.text)
+                        }
+                    }
+                }
+
+                if (parts.isEmpty()) {
+                    emptyList()
+                } else if (parts.size == 1 && parts[0] is InlinePart.Text) {
+                    listOf(ContentItem.Text((parts[0] as InlinePart.Text).text))
+                } else {
+                    listOf(ContentItem.RichLine(parts))
+                }
+            }
+            is ApiExplanationBlock.Math -> {
+                if (block.content.isBlank()) {
+                    emptyList()
+                } else {
+                    listOf(ContentItem.Formula(block.content, display = true))
+                }
+            }
+        }
     }
 }
 

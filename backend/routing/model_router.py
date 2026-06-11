@@ -34,6 +34,7 @@ DEFAULT_MODEL = "gpt-5.4"
 OCR_MODEL = "gpt-4o"
 DIFFICULTY_ROUTER_MODEL = "gpt-5.4"
 EXPLANATION_OVERRIDE_MODEL = "gpt-5.4"
+FORCED_EXPLANATION_MODEL = "gpt-5.4-mini"
 
 # Runtime aliases keep the public routing map stable while using models that
 # are actually available in the current environment.
@@ -48,6 +49,10 @@ def select_model(subject: str, routed_difficulty: str, explanation_level: str = 
 
     초급/고급은 별도의 코칭형 해설 모델로 gpt-4.5를 사용한다.
     """
+    # Temporary demo override: force every explanation generation request to one model.
+    # Remove this return to restore the subject/difficulty routing below.
+    return FORCED_EXPLANATION_MODEL
+
     if explanation_level in {"초급", "고급"}:
         return EXPLANATION_OVERRIDE_MODEL
 

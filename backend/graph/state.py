@@ -53,9 +53,10 @@ class MathExplanationState(TypedDict):
     explanation_candidates: List[dict]
     # 각 후보 형식:
     # {
-    #     "problem_review": "...",
-    #     "condition_interpretation": "...",
-    #     "solution": "...",
+    #     "problem_review": [block, ...],
+    #     "condition_interpretation": [block, ...],
+    #     "solution": [block, ...],
+    #     "answer": "②" 또는 "17",
     #     "extracted_answer": "②" 또는 "17"
     # }
 
@@ -76,9 +77,9 @@ class MathExplanationState(TypedDict):
     # ═══════════════════════════════════════════════════════════════
     # 최종 출력 (LangSmith output 형식과 동일)
     # ═══════════════════════════════════════════════════════════════
-    problem_review: str                 # [1. 문제 리뷰]
-    condition_interpretation: str       # [2. 조건 해석]
-    solution: str                       # [3. 문제 풀이]
+    problem_review: List[dict]          # [1. 문제 리뷰]
+    condition_interpretation: List[dict] # [2. 조건 해석]
+    solution: List[dict]                # [3. 문제 풀이]
     answer: str                         # 최종 답
 
     # ═══════════════════════════════════════════════════════════════
@@ -92,9 +93,9 @@ class MathExplanationState(TypedDict):
 @dataclass
 class ExplanationCandidate:
     """해설 후보 데이터 클래스"""
-    problem_review: str
-    condition_interpretation: str
-    solution: str
+    problem_review: List[dict]
+    condition_interpretation: List[dict]
+    solution: List[dict]
     extracted_answer: str
     raw_response: Optional[str] = None
     error: Optional[str] = None
@@ -168,9 +169,9 @@ def create_initial_state(
         selected_explanation={},
 
         # 최종 출력 (초기화)
-        problem_review="",
-        condition_interpretation="",
-        solution="",
+        problem_review=[],
+        condition_interpretation=[],
+        solution=[],
         answer="",
 
         # 메타 정보
