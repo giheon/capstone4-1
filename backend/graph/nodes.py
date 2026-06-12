@@ -569,6 +569,8 @@ async def generate_single_explanation(
     problem_text: str,
     subject: str,
     unit: str,
+    curriculum_area: str,
+    major_topics: List[str],
     routed_difficulty: str,
     explanation_level: str,
     question_type: str,
@@ -583,6 +585,9 @@ async def generate_single_explanation(
         subject=subject,
         difficulty=routed_difficulty,
         explanation_level=explanation_level,
+        unit=unit,
+        curriculum_area=curriculum_area,
+        major_topics=major_topics,
     )
 
     model = get_model(selected_model, EXPLANATION_TEMPERATURE)
@@ -689,6 +694,8 @@ async def explanation_generation_node(state: MathExplanationState) -> Dict[str, 
     problem_text = state["problem_text"]
     subject = state["subject"]
     unit = state["unit"]
+    curriculum_area = state.get("curriculum_area", "")
+    major_topics = state.get("major_topics", [])
     explanation_level = state["explanation_level"]
     question_type = state["question_type"]
     selected_model = state["selected_model"]
@@ -702,6 +709,8 @@ async def explanation_generation_node(state: MathExplanationState) -> Dict[str, 
             problem_text,
             subject,
             unit,
+            curriculum_area,
+            major_topics,
             routing_difficulty,
             explanation_level,
             question_type,

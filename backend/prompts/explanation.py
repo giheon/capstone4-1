@@ -17,6 +17,11 @@ from typing import Dict, Tuple
 
 from langchain_core.prompts import ChatPromptTemplate
 
+try:
+    from backend.concepts import build_concept_reference_prompt
+except ImportError:
+    from concepts import build_concept_reference_prompt
+
 SUBJECTS = ("확률과통계", "미적분", "기하")
 PROMPT_DIFFICULTIES = ("easy", "medium", "hard", "killer")
 EXPLANATION_LEVELS = ("초급", "중급", "고급")
@@ -6233,6 +6238,9 @@ def build_explanation_chat_prompt(
     subject: str,
     difficulty: str,
     explanation_level: str,
+    unit: str = "",
+    curriculum_area: str = "",
+    major_topics: list[str] | None = None,
 ) -> ChatPromptTemplate:
     """Build a ChatPromptTemplate for explanation generation."""
     base_prompt = _escape_curly_braces(
@@ -6377,8 +6385,22 @@ __OUTPUT_EXAMPLE__
         .replace("__CONCEPT_RULES__", concept_rules)
         .replace("__OUTPUT_EXAMPLE__", output_example)
     )
+    concept_reference = ""
+    if explanation_level == "초급":
+        concept_reference = _escape_curly_braces(
+            build_concept_reference_prompt(
+                subject=subject,
+                unit=unit,
+                curriculum_area=curriculum_area,
+                major_topics=major_topics,
+            )
+        )
+
+    system_prompt = "\n".join(
+        part for part in (base_prompt, concept_reference, output_contract) if part
+    )
     messages = [
-        ("system", base_prompt + "\n" + output_contract),
+        ("system", system_prompt),
         (
             "human",
             """문제:

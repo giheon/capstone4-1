@@ -244,11 +244,7 @@ fun SectionLabel(number: String, title: String) {
 private fun getExplanationDataForLevel(level: String): ExplanationData {
     return when (level) {
         "초급" -> ExplanationData(
-            conceptItems = listOf(
-                ContentItem.Text("이 문제는 합성함수와 삼각함수가 함께 나온 문제예요."),
-                ContentItem.Text("처음에는 식을 억지로 전개하지 말고, 안쪽 식의 구조와 특수값 대입부터 보는 것이 좋아요."),
-                ContentItem.Hint("핵심 개념: 합성함수의 미분, 삼각함수의 주기, 극대점 개수 세기")
-            ),
+            conceptItems = emptyList(),
             section1Title = "문제 리뷰",
             section1 = listOf(
                 ContentItem.Text("안녕하세요! 이 문제를 함께 풀어볼게요. 먼저 문제를 천천히 살펴봅시다."),
